@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "adminAccounts": { ".read": true, ".write": false },
+    "preorders": {
+      ".read": true,
+      "$orderId": {
+        ".write": true,
+        ".validate": "newData.val() == null || newData.hasChildren(['referenceCode','customer','order','payment','status','createdAt'])",
+        "customer": {
+          ".validate": "newData.hasChildren(['prefix','firstName','lastName','studentId','level','room','phone','contact'])",
+          "studentId": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{5,6}$/)" },
+          "phone": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{9,10}$/)" }
+        },
+        "order": {
+          ".validate": "newData.hasChildren(['unitPrice','quantity','totalAmount'])",
+          "unitPrice": { ".validate": "newData.isNumber() && newData.val() == 139" },
+          "quantity": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20" },
+          "totalAmount": { ".validate": "newData.isNumber()" }
+        },
+        "payment": { ".validate": "newData.hasChildren(['method','status','slipData','slipMeta'])" }
+      }
+    },
+    "submissions": { ".read": true, "$submissionId": { ".write": true } },
+    "siteStats": { ".read": true, ".write": true }
+  }
+}
