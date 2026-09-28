@@ -1,321 +1,621 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#5b21b6">
-<title>Pre-order · Say No Plastic Say Hi ถุงผ้า</title>
-<link rel="icon" href="./favicon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#4c1d95" />
+  <meta name="description" content="ระบบพรีออเดอร์กระเป๋าผ้า Say No Plastic Say Hi ถุงผ้า" />
+  <title>Pre-order · Say No Plastic Say Hi ถุงผ้า</title>
+
+  <link rel="icon" href="./favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./styles.css" />
 </head>
+
 <body>
-<div class="bg"><i></i><i></i><i></i></div>
+  <div class="ambient-bg">
+    <div class="mesh mesh-a"></div>
+    <div class="mesh mesh-b"></div>
+    <div class="mesh mesh-c"></div>
+    <div class="grid-bg"></div>
+  </div>
 
-<main class="shell">
-  <section class="hero">
-    <img src="./img/sckc.svg" class="logo" alt="ตราสภานักเรียน">
-    <span class="pill">STUDENT COUNCIL · PRE-ORDER</span>
-    <h1>Say No Plastic <b>Say Hi ถุงผ้า</b></h1>
-    <p>พรีออเดอร์กระเป๋าผ้า กรอกข้อมูล เลือกจำนวน ชำระเงิน และแนบสลิปได้ในเว็บเดียว</p>
+  <!-- หน้าเริ่มต้น -->
+  <section id="studentGate" class="student-gate">
+    <div class="gate-shell">
+      <div class="gate-brand">
+        <div class="gate-logo-wrap">
+          <img src="./img/sckc.svg" alt="ตราสภานักเรียน" />
+        </div>
 
-    <div class="hero-stats">
-      <div><small>ราคา</small><strong>฿139 / ใบ</strong></div>
-      <div><small>ชำระเงิน</small><strong>QR Payment</strong></div>
-      <div><small>ระบบ</small><strong>Pre-order</strong></div>
+        <span class="gate-eyebrow">STUDENT COUNCIL · PRE-ORDER</span>
+
+        <h1>
+          Say No Plastic
+          <b>Say Hi ถุงผ้า</b>
+        </h1>
+
+        <p>
+          พรีออเดอร์กระเป๋าผ้าอย่างเป็นทางการ
+          เริ่มต้นด้วยการกรอกรหัสนักเรียนเพื่อเข้าสู่แบบฟอร์ม
+        </p>
+
+        <div class="gate-features">
+          <div>
+            <strong>฿139</strong>
+            <span>ต่อใบ</span>
+          </div>
+          <div>
+            <strong>5 หลัก</strong>
+            <span>นักเรียนมัธยม</span>
+          </div>
+          <div>
+            <strong>6 หลัก</strong>
+            <span>นักเรียน ปวช.</span>
+          </div>
+        </div>
+
+        <div class="gate-product-preview">
+          <img src="./img/product-bag.svg" alt="รูปสินค้ากระเป๋าผ้า" />
+          <div>
+            <span>PRE-ORDER ITEM</span>
+            <strong>กระเป๋าผ้า Say No Plastic Say Hi ถุงผ้า</strong>
+            <small>ราคา ฿139 / ใบ</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="gate-card">
+        <div class="gate-card-top">
+          <span class="gate-step">START</span>
+          <h2>กรอกรหัสนักเรียน</h2>
+          <p>ระบบจะตรวจประเภทนักเรียนจากจำนวนหลักอัตโนมัติ</p>
+        </div>
+
+        <form id="studentGateForm">
+          <label class="gate-input-wrap">
+            <span>รหัสนักเรียน</span>
+
+            <div class="gate-input-box">
+              <i>#</i>
+              <input
+                id="gateStudentId"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                autocomplete="off"
+                placeholder="กรอก 5 หรือ 6 หลัก"
+                required
+              />
+            </div>
+          </label>
+
+          <div id="gateStatus" class="gate-status waiting">
+            <span class="status-dot"></span>
+            <strong>รอกรอกรหัสนักเรียน</strong>
+          </div>
+
+          <button id="gateContinueBtn" type="submit" class="gate-continue" disabled>
+            <span>เข้าสู่แบบฟอร์ม</span>
+            <b>→</b>
+          </button>
+        </form>
+
+        <div class="gate-hint">
+          <div>
+            <span>5</span>
+            <p><strong>รหัส 5 หลัก</strong>เลือกได้เฉพาะ ม.1–ม.6</p>
+          </div>
+          <div>
+            <span>6</span>
+            <p><strong>รหัส 6 หลัก</strong>เลือกได้เฉพาะ ปวช.1–ปวช.3</p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="card">
-    <div class="progress">
-      <div class="track"><div id="progressBar"></div></div>
-      <div class="steps five-steps">
-        <div class="pstep active" data-p="1"><b>1</b><span>ข้อมูล</span></div>
-        <div class="pstep" data-p="2"><b>2</b><span>ติดต่อ</span></div>
-        <div class="pstep" data-p="3"><b>3</b><span>จำนวน</span></div>
-        <div class="pstep" data-p="4"><b>4</b><span>ชำระเงิน</span></div>
-        <div class="pstep" data-p="5"><b>5</b><span>ตรวจสอบ</span></div>
+  <!-- แบบฟอร์มหลัก -->
+  <main id="mainApp" class="main-app hidden">
+    <header class="mobile-topbar">
+      <div class="mini-brand">
+        <img src="./img/sckc.svg" alt="" />
+        <div>
+          <strong>Say No Plastic</strong>
+          <span>Pre-order</span>
+        </div>
+      </div>
+
+      <button id="changeStudentIdTop" type="button" class="change-id-btn">
+        เปลี่ยนรหัส
+      </button>
+    </header>
+
+    <div class="mobile-live-summary">
+      <div>
+        <span>ผู้สั่ง</span>
+        <strong id="mobileLiveName">-</strong>
+      </div>
+      <div>
+        <span>จำนวน</span>
+        <strong id="mobileLiveQty">1 ใบ</strong>
+      </div>
+      <div>
+        <span>ยอดรวม</span>
+        <strong id="mobileLiveTotal">฿139</strong>
       </div>
     </div>
 
-    <form id="preorderForm" novalidate>
-
-      <!-- STEP 1 -->
-      <section class="form-step active" data-step="1">
-        <div class="heading">
-          <em>01</em>
-          <div><small>BUYER INFORMATION</small><h2>ข้อมูลผู้สั่งซื้อ</h2></div>
+    <div class="app-shell">
+      <aside class="app-sidebar">
+        <div class="sidebar-logo">
+          <img src="./img/sckc.svg" alt="ตราสภานักเรียน" />
         </div>
 
-        <div class="id-guide">
-          <div class="id-icon">#</div>
+        <span class="sidebar-eyebrow">PRE-ORDER</span>
+
+        <h1>
+          Say No Plastic
+          <b>Say Hi ถุงผ้า</b>
+        </h1>
+
+        <p>
+          กรอกข้อมูล เลือกจำนวน ชำระเงิน และแนบหลักฐานให้ครบทุกขั้นตอน
+        </p>
+
+        <div class="verified-student">
+          <div class="verified-icon">✓</div>
           <div>
-            <strong>กรอกรหัสนักเรียนก่อน</strong>
-            <p>5 หลัก = นักเรียนมัธยม · 6 หลัก = นักเรียน ปวช.</p>
+            <small>รหัสนักเรียน</small>
+            <strong id="sidebarStudentId">-</strong>
+            <span id="sidebarStudentType">-</span>
           </div>
         </div>
 
-        <label class="student-id-main">
-          รหัสนักเรียน
-          <input id="studentId" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="กรอก 5 หรือ 6 หลัก" required>
-          <small id="studentTypeBadge" class="type-badge neutral">รอกรอกรหัสนักเรียน</small>
-        </label>
+        <div class="live-summary">
+          <div class="live-title">ข้อมูลที่กรอก</div>
 
-        <div id="buyerFields" class="buyer-fields locked">
-          <div class="grid three">
-            <label>
-              คำนำหน้า
-              <select id="prefix" required disabled>
-                <option value="">เลือกคำนำหน้า</option>
-                <option>เด็กชาย</option>
-                <option>เด็กหญิง</option>
-                <option>นาย</option>
-                <option>นางสาว</option>
-              </select>
-            </label>
-
-            <label>
-              ชื่อ
-              <input id="firstName" maxlength="60" required disabled>
-            </label>
-
-            <label>
-              นามสกุล
-              <input id="lastName" maxlength="60" required disabled>
-            </label>
+          <div class="live-row">
+            <span>ชื่อ</span>
+            <strong id="liveName">ยังไม่ได้กรอก</strong>
           </div>
 
-          <div class="grid two">
-            <label>
-              ชั้น
-              <select id="level" required disabled>
-                <option value="">กรอกรหัสนักเรียนก่อน</option>
-              </select>
-            </label>
+          <div class="live-row">
+            <span>ชั้น / ห้อง</span>
+            <strong id="liveClass">ยังไม่ได้เลือก</strong>
+          </div>
 
-            <label>
-              ห้อง
-              <select id="room" disabled required>
-                <option value="">เลือกชั้นก่อน</option>
-              </select>
-            </label>
+          <div class="live-row">
+            <span>ช่องทาง</span>
+            <strong id="liveContact">ยังไม่ได้กรอก</strong>
+          </div>
+
+          <div class="live-row">
+            <span>เบอร์โทร</span>
+            <strong id="livePhone">ยังไม่ได้กรอก</strong>
+          </div>
+
+          <div class="live-row">
+            <span>จำนวน</span>
+            <strong id="liveQuantity">1 ใบ</strong>
+          </div>
+
+          <div class="live-row total">
+            <span>ยอดรวม</span>
+            <strong id="liveTotal">฿139</strong>
+          </div>
+
+          <div class="live-row">
+            <span>สลิป</span>
+            <strong id="liveSlip">ยังไม่แนบ</strong>
           </div>
         </div>
 
-        <div class="actions end">
-          <button type="button" class="btn primary next">ถัดไป →</button>
-        </div>
-      </section>
+        <button id="changeStudentId" type="button" class="change-id-btn sidebar-change">
+          ← เปลี่ยนรหัสนักเรียน
+        </button>
+      </aside>
 
-      <!-- STEP 2 -->
-      <section class="form-step" data-step="2">
-        <div class="heading">
-          <em>02</em>
-          <div><small>CONTACT INFORMATION</small><h2>ช่องทางการติดต่อ</h2></div>
-        </div>
-
-        <p class="step-desc">เลือก Facebook หรือ Instagram อย่างใดอย่างหนึ่ง และกรอกเบอร์โทรที่สามารถติดต่อได้</p>
-
-        <div class="contact-row contact-big">
-          <button type="button" class="contact selected" data-contact="facebook">
-            <b>f</b>
-            <span><strong>Facebook</strong><small>ชื่อหรือลิงก์โปรไฟล์</small></span>
-          </button>
-
-          <button type="button" class="contact" data-contact="instagram">
-            <b>◎</b>
-            <span><strong>Instagram</strong><small>Username หรือ URL</small></span>
-          </button>
-        </div>
-
-        <div class="grid two contact-inputs">
-          <label>
-            <span id="contactLabel">Facebook</span>
-            <input id="contactValue" maxlength="160" placeholder="ชื่อ Facebook หรือ URL" required>
-          </label>
-
-          <label>
-            เบอร์โทรศัพท์
-            <input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="0XXXXXXXXX" required>
-            <small>กรอกตัวเลข 9–10 หลัก</small>
-          </label>
-        </div>
-
-        <div class="contact-note">
-          <b>i</b>
-          <span>กรุณาใช้ช่องทางที่ติดต่อได้จริง เพื่อรับข่าวสารเกี่ยวกับการรับกระเป๋า</span>
-        </div>
-
-        <div class="actions">
-          <button type="button" class="btn secondary back">← ย้อนกลับ</button>
-          <button type="button" class="btn primary next">ถัดไป →</button>
-        </div>
-      </section>
-
-      <!-- STEP 3 -->
-      <section class="form-step" data-step="3">
-        <div class="heading">
-          <em>03</em>
-          <div><small>ORDER DETAILS</small><h2>เลือกจำนวนที่ต้องการ</h2></div>
-        </div>
-
-        <div class="product">
-          <div class="bag">
-            <span>SAY NO</span>
-            <strong>PLASTIC</strong>
-            <small>SAY HI ถุงผ้า</small>
+      <section class="form-card">
+        <div class="progress-wrap">
+          <div class="progress-line">
+            <div id="progressBar" class="progress-fill"></div>
           </div>
 
-          <div class="product-info">
-            <span class="tag">PRE-ORDER</span>
-            <h3>กระเป๋าผ้า Say No Plastic Say Hi ถุงผ้า</h3>
-            <p>สินค้าพรีออเดอร์จากกิจกรรมสภานักเรียน</p>
-
-            <div class="price">฿139 <small>/ ใบ</small></div>
-
-            <div class="qty">
+          <div class="progress-steps">
+            <div class="progress-item active" data-progress="1">
+              <b>1</b>
+              <span>ข้อมูล</span>
+            </div>
+            <div class="progress-item" data-progress="2">
+              <b>2</b>
+              <span>ติดต่อ</span>
+            </div>
+            <div class="progress-item" data-progress="3">
+              <b>3</b>
               <span>จำนวน</span>
+            </div>
+            <div class="progress-item" data-progress="4">
+              <b>4</b>
+              <span>ชำระเงิน</span>
+            </div>
+            <div class="progress-item" data-progress="5">
+              <b>5</b>
+              <span>ตรวจสอบ</span>
+            </div>
+          </div>
+        </div>
+
+        <form id="preorderForm" novalidate>
+          <input id="studentId" type="hidden" />
+
+          <!-- STEP 1 -->
+          <section class="form-step active" data-step="1">
+            <div class="step-heading">
+              <div class="step-number">01</div>
               <div>
-                <button id="minus" type="button">−</button>
-                <input id="quantity" type="number" min="1" max="20" value="1">
-                <button id="plus" type="button">+</button>
+                <span>BUYER INFORMATION</span>
+                <h2>ข้อมูลผู้สั่งซื้อ</h2>
+                <p>กรอกชื่อ ชั้น และห้องให้ถูกต้อง</p>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div class="summary">
-          <div><small>ราคา/ใบ</small><strong>฿139</strong></div>
-          <div><small>จำนวน</small><strong><span id="qtyText">1</span> ใบ</strong></div>
-          <div class="total"><small>ยอดที่ต้องชำระ</small><strong id="totalAmount">฿139</strong></div>
-        </div>
-
-        <div class="actions">
-          <button type="button" class="btn secondary back">← ย้อนกลับ</button>
-          <button type="button" class="btn primary next">ไปชำระเงิน →</button>
-        </div>
-      </section>
-
-      <!-- STEP 4 -->
-      <section class="form-step" data-step="4">
-        <div class="heading">
-          <em>04</em>
-          <div><small>PAYMENT</small><h2>ชำระเงินและแนบหลักฐาน</h2></div>
-        </div>
-
-        <div class="payment">
-          <div class="qr">
-            <small>ยอดที่ต้องชำระ</small>
-            <strong id="paymentAmount">฿139</strong>
-            <img src="./payment-qr.svg" alt="QR ชำระเงิน">
-            <p>สแกน QR และตรวจสอบยอดให้ตรงกับระบบ</p>
-          </div>
-
-          <div class="slip">
-            <h3>แนบหลักฐานการชำระเงิน</h3>
-
-            <div id="uploadZone" class="upload" tabindex="0">
-              <input id="slipFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-              <b>＋</b>
-              <strong>คลิกเพื่อเลือกรูปสลิป</strong>
-              <small>JPG / PNG / WEBP · ระบบจะย่อรูปอัตโนมัติ</small>
-            </div>
-
-            <div id="slipPreview" class="preview hidden">
-              <img id="slipImg" alt="ตัวอย่างสลิป">
+            <div class="student-summary-strip">
               <div>
-                <strong id="slipName"></strong>
-                <small id="slipSize"></small>
+                <span>รหัสนักเรียน</span>
+                <strong id="studentSummaryId">-</strong>
               </div>
-              <button id="removeSlip" type="button">×</button>
+              <div>
+                <span>ประเภท</span>
+                <strong id="studentSummaryType">-</strong>
+              </div>
             </div>
 
-            <div class="note">ใช้ Realtime Database อย่างเดียว รูปจะถูกย่อก่อนบันทึก</div>
-          </div>
-        </div>
+            <div class="form-grid three">
+              <label class="field">
+                <span>คำนำหน้า <b>*</b></span>
+                <select id="prefix" required>
+                  <option value="">เลือกคำนำหน้า</option>
+                  <option value="เด็กชาย">เด็กชาย</option>
+                  <option value="เด็กหญิง">เด็กหญิง</option>
+                  <option value="นาย">นาย</option>
+                  <option value="นางสาว">นางสาว</option>
+                </select>
+              </label>
 
-        <div class="actions">
-          <button type="button" class="btn secondary back">← ย้อนกลับ</button>
-          <button type="button" class="btn primary next">ตรวจสอบคำสั่งซื้อ →</button>
-        </div>
+              <label class="field">
+                <span>ชื่อ <b>*</b></span>
+                <input id="firstName" type="text" maxlength="60" placeholder="ชื่อ" required />
+              </label>
+
+              <label class="field">
+                <span>นามสกุล <b>*</b></span>
+                <input id="lastName" type="text" maxlength="60" placeholder="นามสกุล" required />
+              </label>
+            </div>
+
+            <div class="form-grid two">
+              <label class="field">
+                <span>ชั้น <b>*</b></span>
+                <select id="level" required>
+                  <option value="">เลือกชั้น</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>ห้อง <b>*</b></span>
+                <select id="room" disabled required>
+                  <option value="">เลือกชั้นก่อน</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="actions end">
+              <button type="button" class="btn primary next-btn">
+                ถัดไป →
+              </button>
+            </div>
+          </section>
+
+          <!-- STEP 2 -->
+          <section class="form-step" data-step="2">
+            <div class="step-heading">
+              <div class="step-number">02</div>
+              <div>
+                <span>CONTACT INFORMATION</span>
+                <h2>ช่องทางการติดต่อ</h2>
+                <p>เลือกช่องทางออนไลน์ 1 ช่องทาง และกรอกเบอร์โทรศัพท์</p>
+              </div>
+            </div>
+
+            <div class="contact-choice-grid">
+              <button type="button" class="contact-option selected" data-contact="facebook">
+                <div class="contact-logo facebook">f</div>
+                <div>
+                  <strong>Facebook</strong>
+                  <span>ชื่อหรือลิงก์โปรไฟล์</span>
+                </div>
+                <i>✓</i>
+              </button>
+
+              <button type="button" class="contact-option" data-contact="instagram">
+                <div class="contact-logo instagram">◎</div>
+                <div>
+                  <strong>Instagram</strong>
+                  <span>Username หรือ URL</span>
+                </div>
+                <i>✓</i>
+              </button>
+            </div>
+
+            <div class="form-grid two">
+              <label class="field">
+                <span id="contactLabel">Facebook <b>*</b></span>
+                <input id="contactValue" type="text" maxlength="160" placeholder="ชื่อ Facebook หรือ URL" required />
+              </label>
+
+              <label class="field">
+                <span>เบอร์โทรศัพท์ <b>*</b></span>
+                <input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="0XXXXXXXXX" required />
+                <small>กรอกตัวเลข 9–10 หลัก</small>
+              </label>
+            </div>
+
+            <div class="info-note">
+              <i>i</i>
+              <p>กรุณาใช้ช่องทางที่สามารถติดต่อได้จริง เพื่อรับข้อมูลเกี่ยวกับการรับกระเป๋า</p>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn secondary back-btn">← ย้อนกลับ</button>
+              <button type="button" class="btn primary next-btn">ถัดไป →</button>
+            </div>
+          </section>
+
+          <!-- STEP 3 -->
+          <section class="form-step" data-step="3">
+            <div class="step-heading">
+              <div class="step-number">03</div>
+              <div>
+                <span>ORDER DETAILS</span>
+                <h2>เลือกจำนวนที่ต้องการ</h2>
+                <p>เลือกได้ตั้งแต่ 1–10 ใบ</p>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-art">
+                <img src="./img/product-bag.svg" alt="รูปสินค้ากระเป๋าผ้า" class="product-image" />
+              </div>
+
+              <div class="product-details">
+                <span class="product-tag">PRE-ORDER</span>
+                <h3>กระเป๋าผ้า Say No Plastic Say Hi ถุงผ้า</h3>
+                <p>สินค้าพรีออเดอร์จากกิจกรรมสภานักเรียน</p>
+
+                <div class="price-line">
+                  <strong>฿139</strong>
+                  <span>/ ใบ</span>
+                </div>
+
+                <div class="quantity-row">
+                  <span>จำนวนที่ต้องการ</span>
+
+                  <select id="quantity" class="qty-select">
+                    <option value="1">1 ใบ</option>
+                    <option value="2">2 ใบ</option>
+                    <option value="3">3 ใบ</option>
+                    <option value="4">4 ใบ</option>
+                    <option value="5">5 ใบ</option>
+                    <option value="6">6 ใบ</option>
+                    <option value="7">7 ใบ</option>
+                    <option value="8">8 ใบ</option>
+                    <option value="9">9 ใบ</option>
+                    <option value="10">10 ใบ</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="price-summary">
+              <div>
+                <span>ราคา/ใบ</span>
+                <strong>฿139</strong>
+              </div>
+
+              <div>
+                <span>จำนวน</span>
+                <strong><b id="qtyDisplay">1</b> ใบ</strong>
+              </div>
+
+              <div class="grand-total">
+                <span>ยอดที่ต้องชำระ</span>
+                <strong id="totalAmount">฿139</strong>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn secondary back-btn">← ย้อนกลับ</button>
+              <button type="button" class="btn primary next-btn">ไปชำระเงิน →</button>
+            </div>
+          </section>
+
+          <!-- STEP 4 -->
+          <section class="form-step" data-step="4">
+            <div class="step-heading">
+              <div class="step-number">04</div>
+              <div>
+                <span>PAYMENT</span>
+                <h2>ชำระเงินและแนบหลักฐาน</h2>
+                <p>QR จะเปลี่ยนตามจำนวนที่เลือก</p>
+              </div>
+            </div>
+
+            <div class="payment-grid">
+              <div class="qr-card">
+                <div class="amount-label">
+                  <span>ยอดที่ต้องชำระ</span>
+                  <strong id="paymentAmount">฿139</strong>
+                </div>
+
+                <div class="qr-box">
+                  <img id="paymentQrImage" src="./qr/qr-1.svg" alt="QR ชำระเงิน" />
+                </div>
+
+                <div class="qr-meta">
+                  <span id="qrQuantityText">สำหรับ 1 ใบ</span>
+                  <strong id="qrAmountText">฿139</strong>
+                </div>
+
+                <p>สแกน QR ให้ตรงกับจำนวนที่เลือก</p>
+              </div>
+
+              <div class="upload-card">
+                <div class="upload-head">
+                  <div class="upload-icon">↥</div>
+                  <div>
+                    <strong>แนบหลักฐานการชำระเงิน</strong>
+                    <span>JPG / PNG / WEBP</span>
+                  </div>
+                </div>
+
+                <div id="uploadZone" class="upload-zone" tabindex="0">
+                  <input id="slipFile" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+                  <div class="upload-plus">＋</div>
+                  <strong>เลือกรูปสลิป</strong>
+                  <span>ระบบจะย่อรูปก่อนบันทึกอัตโนมัติ</span>
+                </div>
+
+                <div id="slipPreview" class="slip-preview hidden">
+                  <img id="slipPreviewImage" alt="ตัวอย่างสลิป" />
+                  <div>
+                    <strong id="slipFileName">slip.jpg</strong>
+                    <span id="slipFileSize">-</span>
+                  </div>
+                  <button id="removeSlip" type="button">×</button>
+                </div>
+
+                <div class="info-note">
+                  <i>i</i>
+                  <p>รูปสลิปจะถูกย่อและบันทึกใน Firebase Realtime Database</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn secondary back-btn">← ย้อนกลับ</button>
+              <button type="button" class="btn primary next-btn">ตรวจสอบคำสั่งซื้อ →</button>
+            </div>
+          </section>
+
+          <!-- STEP 5 -->
+          <section class="form-step" data-step="5">
+            <div class="step-heading">
+              <div class="step-number">05</div>
+              <div>
+                <span>REVIEW ORDER</span>
+                <h2>ตรวจสอบก่อนยืนยัน</h2>
+                <p>ตรวจข้อมูลทั้งหมดก่อนส่งคำสั่งซื้อ</p>
+              </div>
+            </div>
+
+            <div class="review-grid">
+              <article class="review-card">
+                <header>
+                  <strong>ข้อมูลผู้สั่งซื้อ</strong>
+                  <button type="button" data-edit-step="1">แก้ไข</button>
+                </header>
+                <dl>
+                  <div><dt>ชื่อ</dt><dd id="reviewName">-</dd></div>
+                  <div><dt>รหัสนักเรียน</dt><dd id="reviewStudentId">-</dd></div>
+                  <div><dt>ชั้น / ห้อง</dt><dd id="reviewClass">-</dd></div>
+                </dl>
+              </article>
+
+              <article class="review-card">
+                <header>
+                  <strong>ช่องทางการติดต่อ</strong>
+                  <button type="button" data-edit-step="2">แก้ไข</button>
+                </header>
+                <dl>
+                  <div><dt>เบอร์โทร</dt><dd id="reviewPhone">-</dd></div>
+                  <div><dt>ช่องทาง</dt><dd id="reviewContact">-</dd></div>
+                </dl>
+              </article>
+
+              <article class="review-card">
+                <header>
+                  <strong>รายละเอียดคำสั่งซื้อ</strong>
+                  <button type="button" data-edit-step="3">แก้ไข</button>
+                </header>
+                <dl>
+                  <div><dt>ราคา/ใบ</dt><dd>฿139</dd></div>
+                  <div><dt>จำนวน</dt><dd id="reviewQuantity">-</dd></div>
+                  <div class="highlight"><dt>ยอดชำระ</dt><dd id="reviewTotal">-</dd></div>
+                </dl>
+              </article>
+
+              <article class="review-card review-slip-card">
+                <header>
+                  <strong>หลักฐานการชำระเงิน</strong>
+                  <button type="button" data-edit-step="4">แก้ไข</button>
+                </header>
+                <img id="reviewSlip" alt="หลักฐานการชำระเงิน" />
+              </article>
+            </div>
+
+            <label class="confirm-order">
+              <input id="confirmOrder" type="checkbox" />
+              <span>ยืนยันว่าข้อมูลและยอดชำระถูกต้อง และได้ชำระเงินตามยอดที่ระบบแสดงแล้ว</span>
+            </label>
+
+            <div class="actions">
+              <button type="button" class="btn secondary back-btn">← ย้อนกลับ</button>
+              <button id="submitOrderBtn" type="submit" class="btn primary">
+                <span id="submitText">ยืนยันคำสั่งซื้อ</span>
+                <span id="submitLoader" class="loader hidden"></span>
+              </button>
+            </div>
+          </section>
+        </form>
       </section>
-
-      <!-- STEP 5 -->
-      <section class="form-step" data-step="5">
-        <div class="heading">
-          <em>05</em>
-          <div><small>REVIEW ORDER</small><h2>ตรวจสอบก่อนยืนยัน</h2></div>
-        </div>
-
-        <div class="review">
-          <article>
-            <header>ข้อมูลผู้สั่งซื้อ <button type="button" data-edit="1">แก้ไข</button></header>
-            <p><span>ชื่อ</span><b id="rName">-</b></p>
-            <p><span>รหัสนักเรียน</span><b id="rStudent">-</b></p>
-            <p><span>ชั้น / ห้อง</span><b id="rClass">-</b></p>
-          </article>
-
-          <article>
-            <header>ช่องทางติดต่อ <button type="button" data-edit="2">แก้ไข</button></header>
-            <p><span>เบอร์โทร</span><b id="rPhone">-</b></p>
-            <p><span>ช่องทาง</span><b id="rContact">-</b></p>
-          </article>
-
-          <article>
-            <header>รายละเอียดคำสั่งซื้อ <button type="button" data-edit="3">แก้ไข</button></header>
-            <p><span>ราคา/ใบ</span><b>฿139</b></p>
-            <p><span>จำนวน</span><b id="rQty">-</b></p>
-            <p class="highlight"><span>ยอดชำระ</span><b id="rTotal">-</b></p>
-          </article>
-
-          <article class="review-slip">
-            <header>หลักฐานการชำระเงิน <button type="button" data-edit="4">แก้ไข</button></header>
-            <img id="rSlip" alt="หลักฐานการชำระเงิน">
-          </article>
-        </div>
-
-        <label class="confirm">
-          <input id="confirmOrder" type="checkbox">
-          ยืนยันว่าข้อมูลและยอดชำระถูกต้อง และได้ชำระเงินแล้ว
-        </label>
-
-        <div class="actions">
-          <button type="button" class="btn secondary back">← ย้อนกลับ</button>
-          <button id="submitBtn" type="submit" class="btn primary">
-            <span id="submitText">ยืนยันคำสั่งซื้อ</span>
-            <i id="loader" class="loader hidden"></i>
-          </button>
-        </div>
-      </section>
-    </form>
-  </section>
-</main>
-
-<div id="successModal" class="modal hidden">
-  <div class="modal-bg"></div>
-  <div class="success">
-    <i>✓</i>
-    <small>PRE-ORDER COMPLETE</small>
-    <h2>บันทึกคำสั่งซื้อสำเร็จ</h2>
-    <p>ระบบได้รับข้อมูลและหลักฐานการชำระเงินเรียบร้อยแล้ว</p>
-
-    <div class="success-ref">
-      <small>หมายเลขคำสั่งซื้อ</small>
-      <strong id="successRef">-</strong>
     </div>
+  </main>
 
-    <div class="success-grid">
-      <div><small>จำนวน</small><strong id="successQty">-</strong></div>
-      <div><small>ยอดชำระ</small><strong id="successTotal">-</strong></div>
+  <div id="successModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+
+    <div class="success-card">
+      <div class="success-check">✓</div>
+      <span>PRE-ORDER COMPLETE</span>
+      <h2>บันทึกคำสั่งซื้อสำเร็จ</h2>
+      <p>ระบบได้รับข้อมูลและหลักฐานการชำระเงินเรียบร้อยแล้ว</p>
+
+      <div class="reference-box">
+        <small>หมายเลขคำสั่งซื้อ</small>
+        <strong id="successReference">-</strong>
+      </div>
+
+      <div class="success-summary">
+        <div>
+          <span>จำนวน</span>
+          <strong id="successQty">-</strong>
+        </div>
+        <div>
+          <span>ยอดชำระ</span>
+          <strong id="successTotal">-</strong>
+        </div>
+      </div>
+
+      <button id="finishBtn" class="btn primary">เสร็จสิ้น</button>
     </div>
-
-    <button id="finishBtn" class="btn primary">เสร็จสิ้น</button>
   </div>
-</div>
 
-<div id="toastContainer"></div>
-<script type="module" src="./app.js"></script>
+  <div id="toastContainer"></div>
+
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

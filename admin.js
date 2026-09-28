@@ -2,33 +2,379 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
 
-const SESSION_KEY='preorder_admin_session', SESSION_DAYS=7;
-const app=initializeApp(firebaseConfig), db=getDatabase(app), $=id=>document.getElementById(id);
-const loginScreen=$('loginScreen'), adminApp=$('adminApp'), loginForm=$('loginForm'), username=$('username'), password=$('password'), remember=$('remember'), loginBtn=$('loginBtn'), loginText=$('loginText'), loginLoader=$('loginLoader'), adminUser=$('adminUser');
-const dashboard=$('dashboard'), ordersView=$('orders'), title=$('title'), nav=[...document.querySelectorAll('.nav')];
-const tbody=$('tbody'), recent=$('recent'), recentEmpty=$('recentEmpty'), emptyOrders=$('emptyOrders'), search=$('search'), statusFilter=$('statusFilter'), levelFilter=$('levelFilter');
-const detail=$('detail'), dRef=$('dRef'), dStudent=$('dStudent'), dName=$('dName'), dClass=$('dClass'), dPhone=$('dPhone'), dContact=$('dContact'), dQty=$('dQty'), dUnit=$('dUnit'), dTotal=$('dTotal'), dDate=$('dDate'), dSlip=$('dSlip'), openSlip=$('openSlip');
-let data=[], selectedId=null, unsub=null, currentAdmin=null;
-restore();
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-loginForm.addEventListener('submit',async e=>{e.preventDefault();const user=normalize(username.value),pass=password.value;if(!user||!pass){toast('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน','error');return}setLogin(true);try{const snap=await get(ref(db,`adminAccounts/${user}`));if(!snap.exists())throw 0;const acc=snap.val(),hash=await sha256(pass);if(!acc.passwordHash||!same(hash.toLowerCase(),String(acc.passwordHash).toLowerCase()))throw 0;currentAdmin={username:user,role:acc.role||'admin'};saveSession(currentAdmin,remember.checked);password.value='';showAdmin();subscribe()}catch(err){console.error(err);toast('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง','error')}finally{setLogin(false)}});
-$('logout').addEventListener('click',()=>{clearSession();hideAdmin()});
-function saveSession(admin,keep){const v=JSON.stringify({...admin,expiresAt:Date.now()+(keep?SESSION_DAYS*86400000:12*3600000)});(keep?localStorage:sessionStorage).setItem(SESSION_KEY,v);(keep?sessionStorage:localStorage).removeItem(SESSION_KEY)}
-function restore(){const raw=localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY);if(!raw){hideAdmin();return}try{const s=JSON.parse(raw);if(!s.expiresAt||Date.now()>=s.expiresAt){clearSession();hideAdmin();return}currentAdmin={username:s.username,role:s.role||'admin'};showAdmin();subscribe()}catch{clearSession();hideAdmin()}}
-function clearSession(){localStorage.removeItem(SESSION_KEY);sessionStorage.removeItem(SESSION_KEY);currentAdmin=null;if(unsub){unsub();unsub=null}}
-function showAdmin(){loginScreen.classList.add('hidden');adminApp.classList.remove('hidden');adminUser.textContent=currentAdmin?.username||'Admin'}
-function hideAdmin(){adminApp.classList.add('hidden');loginScreen.classList.remove('hidden')}
+const SESSION_KEY = "preorder_admin_session";
+const SESSION_DAYS = 7;
 
-nav.forEach(b=>b.addEventListener('click',()=>openView(b.dataset.view)));$('showAll').addEventListener('click',()=>openView('orders'));function openView(v){nav.forEach(b=>b.classList.toggle('active',b.dataset.view===v));const d=v==='dashboard';dashboard.classList.toggle('active',d);ordersView.classList.toggle('active',!d);title.textContent=d?'ภาพรวมพรีออเดอร์':'คำสั่งซื้อทั้งหมด'}
-function subscribe(){if(unsub)unsub();unsub=onValue(ref(db,'preorders'),snap=>{const raw=snap.val()||{};data=Object.entries(raw).map(([id,v])=>({id,...v})).sort((a,b)=>ts(b)-ts(a));renderAll()},err=>{console.error(err);toast('โหลดข้อมูลไม่สำเร็จ','error')})}
-function renderAll(){renderStats();renderRecent();renderTable()}
-function renderStats(){const today=dateKey(new Date());$('totalOrders').textContent=data.length;$('totalBags').textContent=data.reduce((s,x)=>s+Number(x?.order?.quantity||0),0).toLocaleString('th-TH');$('totalRevenue').textContent=money(data.reduce((s,x)=>s+Number(x?.order?.totalAmount||0),0));$('pendingCount').textContent=data.filter(x=>status(x)==='pending').length;$('verifiedCount').textContent=data.filter(x=>status(x)==='verified').length;$('todayCount').textContent=data.filter(x=>{const d=toDate(x.createdAt);return d&&dateKey(d)===today}).length}
-function renderRecent(){recent.innerHTML='';const list=data.slice(0,6);recentEmpty.classList.toggle('hidden',list.length>0);list.forEach(o=>{const row=document.createElement('div');row.className='recent-row';row.innerHTML=`<div><strong>${esc(name(o))}</strong><span>${esc(o.referenceCode||'-')} · ${esc(o?.customer?.studentId||'-')}</span></div><div><span>จำนวน</span><strong>${Number(o?.order?.quantity||0)} ใบ</strong></div><div><span>ยอด</span><strong>${money(o?.order?.totalAmount||0)}</strong></div><div><span>สถานะ</span>${badge(o)}</div><button class="small-btn" data-detail="${o.id}">รายละเอียด</button>`;recent.appendChild(row)});attach()}
-function renderTable(){const q=search.value.trim().toLowerCase(),st=statusFilter.value,lv=levelFilter.value;const list=data.filter(o=>{const c=o.customer||{};if(st&&status(o)!==st)return false;if(lv&&c.level!==lv)return false;if(!q)return true;return [o.referenceCode,name(o),c.studentId,c.phone,c.level,c.room,c?.contact?.value].filter(Boolean).join(' ').toLowerCase().includes(q)});tbody.innerHTML='';emptyOrders.classList.toggle('hidden',list.length>0);list.forEach(o=>{const c=o.customer||{},d=toDate(o.createdAt),tr=document.createElement('tr');tr.innerHTML=`<td><strong>${esc(name(o))}</strong><br><small>${esc(o.referenceCode||'-')} · ${esc(c.studentId||'-')}</small></td><td>${esc(c.level||'-')} / ${esc(c.room||'-')}</td><td>${Number(o?.order?.quantity||0)} ใบ</td><td><strong>${money(o?.order?.totalAmount||0)}</strong></td><td>${badge(o)}</td><td>${d?esc(formatDate(d)):'-'}</td><td><button class="small-btn" data-detail="${o.id}">ดูรายละเอียด</button></td>`;tbody.appendChild(tr)});attach()}
-search.addEventListener('input',renderTable);statusFilter.addEventListener('change',renderTable);levelFilter.addEventListener('change',renderTable);$('refresh').addEventListener('click',()=>{renderAll();toast('รีเฟรชข้อมูลแล้ว','success')});
-function attach(){document.querySelectorAll('[data-detail]').forEach(b=>b.onclick=()=>openDetail(b.dataset.detail))}
-function openDetail(id){const o=data.find(x=>x.id===id);if(!o)return;selectedId=id;const c=o.customer||{},od=o.order||{},p=o.payment||{},d=toDate(o.createdAt);dRef.textContent=o.referenceCode||'-';dStudent.textContent=c.studentId||'-';dName.textContent=name(o);dClass.textContent=`${c.level||'-'} / ห้อง ${c.room||'-'}`;dPhone.textContent=c.phone||'-';dContact.textContent=`${c?.contact?.type==='instagram'?'Instagram':'Facebook'} · ${c?.contact?.value||'-'}`;dQty.textContent=`${Number(od.quantity||0)} ใบ`;dUnit.textContent=money(od.unitPrice||0);dTotal.textContent=money(od.totalAmount||0);dDate.textContent=d?formatDate(d):'-';dSlip.src=p.slipData||'';openSlip.href=p.slipData||'#';detail.classList.remove('hidden')}
-document.querySelectorAll('[data-close]').forEach(x=>x.addEventListener('click',()=>detail.classList.add('hidden')));
-document.querySelectorAll('[data-status]').forEach(b=>b.addEventListener('click',async()=>{if(!selectedId)return;const st=b.dataset.status;b.disabled=true;try{await update(ref(db,`preorders/${selectedId}`),{'payment/status':st,status:st==='verified'?'payment_verified':st==='rejected'?'payment_issue':'pending_review',reviewedAt:Date.now(),reviewedBy:currentAdmin?.username||'admin'});toast('อัปเดตสถานะแล้ว','success');detail.classList.add('hidden')}catch(err){console.error(err);toast('อัปเดตสถานะไม่สำเร็จ','error')}finally{b.disabled=false}}));
+const loginScreen = document.getElementById("loginScreen");
+const adminApp = document.getElementById("adminApp");
+const loginForm = document.getElementById("loginForm");
+const username = document.getElementById("username");
+const password = document.getElementById("password");
+const rememberLogin = document.getElementById("rememberLogin");
+const logoutBtn = document.getElementById("logoutBtn");
 
-const status=o=>o?.payment?.status||'pending';function badge(o){const s=status(o),labels={pending:'รอตรวจสอบ',verified:'ยืนยันแล้ว',rejected:'มีปัญหา'};return`<span class="status ${s}">${labels[s]||'รอตรวจสอบ'}</span>`}function name(o){const c=o.customer||{};return`${c.prefix||''}${c.firstName||''} ${c.lastName||''}`.trim()}function normalize(v){return String(v||'').trim().toLowerCase().replace(/[.#$\[\]\/]/g,'')}async function sha256(t){const b=new TextEncoder().encode(t),h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,'0')).join('')}function same(a,b){if(a.length!==b.length)return false;let r=0;for(let i=0;i<a.length;i++)r|=a.charCodeAt(i)^b.charCodeAt(i);return r===0}function setLogin(x){loginBtn.disabled=x;loginText.classList.toggle('hidden',x);loginLoader.classList.toggle('hidden',!x)}function ts(o){const d=toDate(o?.createdAt);return d?d.getTime():0}function toDate(v){return typeof v==='number'?new Date(v):null}function dateKey(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function formatDate(d){return new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(d)}const money=v=>`฿${Number(v||0).toLocaleString('th-TH')}`;function esc(v=''){return String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}function toast(m,t=''){const box=$('toast'),e=document.createElement('div');e.className=`toast ${t}`;e.textContent=m;box.appendChild(e);setTimeout(()=>e.remove(),4000)}
+const navs = [...document.querySelectorAll(".nav")];
+const dashboardView = document.getElementById("dashboardView");
+const ordersView = document.getElementById("ordersView");
+const pageTitle = document.getElementById("pageTitle");
+const refreshBtn = document.getElementById("refreshBtn");
+
+const totalOrders = document.getElementById("totalOrders");
+const totalBags = document.getElementById("totalBags");
+const totalRevenue = document.getElementById("totalRevenue");
+const pendingCount = document.getElementById("pendingCount");
+const verifiedCount = document.getElementById("verifiedCount");
+const todayCount = document.getElementById("todayCount");
+
+const recentOrders = document.getElementById("recentOrders");
+const searchInput = document.getElementById("searchInput");
+const statusFilter = document.getElementById("statusFilter");
+const levelFilter = document.getElementById("levelFilter");
+const orderTableBody = document.getElementById("orderTableBody");
+
+const detailModal = document.getElementById("detailModal");
+const dReference = document.getElementById("dReference");
+const dStudentId = document.getElementById("dStudentId");
+const dName = document.getElementById("dName");
+const dClass = document.getElementById("dClass");
+const dPhone = document.getElementById("dPhone");
+const dContact = document.getElementById("dContact");
+const dQuantity = document.getElementById("dQuantity");
+const dTotal = document.getElementById("dTotal");
+const dSlip = document.getElementById("dSlip");
+
+let orders = [];
+let selectedId = null;
+let currentAdmin = null;
+let unsubscribe = null;
+
+restoreSession();
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const user = normalizeUsername(username.value);
+  const pass = password.value;
+
+  try {
+    const snap = await get(ref(db, `adminAccounts/${user}`));
+
+    if (!snap.exists()) throw new Error("INVALID");
+
+    const account = snap.val();
+    const hash = await sha256(pass);
+
+    if (!account.passwordHash || hash.toLowerCase() !== String(account.passwordHash).toLowerCase()) {
+      throw new Error("INVALID");
+    }
+
+    currentAdmin = { username: user, role: account.role || "admin" };
+
+    saveSession(currentAdmin, rememberLogin.checked);
+
+    loginScreen.classList.add("hidden");
+    adminApp.classList.remove("hidden");
+
+    subscribeOrders();
+  } catch (error) {
+    showToast("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+  }
+});
+
+function saveSession(admin, remember) {
+  const data = JSON.stringify({
+    ...admin,
+    expiresAt: Date.now() + (remember ? SESSION_DAYS * 86400000 : 12 * 60 * 60 * 1000)
+  });
+
+  if (remember) {
+    localStorage.setItem(SESSION_KEY, data);
+    sessionStorage.removeItem(SESSION_KEY);
+  } else {
+    sessionStorage.setItem(SESSION_KEY, data);
+    localStorage.removeItem(SESSION_KEY);
+  }
+}
+
+function restoreSession() {
+  const raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+
+  try {
+    const data = JSON.parse(raw);
+
+    if (!data.expiresAt || Date.now() > data.expiresAt) {
+      clearSession();
+      return;
+    }
+
+    currentAdmin = data;
+    loginScreen.classList.add("hidden");
+    adminApp.classList.remove("hidden");
+    subscribeOrders();
+  } catch {
+    clearSession();
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+
+  if (unsubscribe) {
+    unsubscribe();
+    unsubscribe = null;
+  }
+}
+
+logoutBtn.addEventListener("click", () => {
+  clearSession();
+  location.reload();
+});
+
+navs.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    navs.forEach((n) => n.classList.remove("active"));
+    btn.classList.add("active");
+
+    const dashboard = btn.dataset.view === "dashboard";
+
+    dashboardView.classList.toggle("active", dashboard);
+    ordersView.classList.toggle("active", !dashboard);
+
+    pageTitle.textContent = dashboard ? "ภาพรวมพรีออเดอร์" : "คำสั่งซื้อทั้งหมด";
+  });
+});
+
+function subscribeOrders() {
+  if (unsubscribe) unsubscribe();
+
+  unsubscribe = onValue(ref(db, "preorders"), (snap) => {
+    const raw = snap.val() || {};
+
+    orders = Object.entries(raw)
+      .map(([id, value]) => ({ id, ...value }))
+      .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+
+    renderAll();
+  });
+}
+
+function renderAll() {
+  renderStats();
+  renderRecent();
+  renderTable();
+}
+
+function renderStats() {
+  totalOrders.textContent = orders.length;
+  totalBags.textContent = orders.reduce((s, o) => s + Number(o.order?.quantity || 0), 0);
+  totalRevenue.textContent = money(orders.reduce((s, o) => s + Number(o.order?.totalAmount || 0), 0));
+
+  pendingCount.textContent = orders.filter((o) => statusOf(o) === "pending").length;
+  verifiedCount.textContent = orders.filter((o) => statusOf(o) === "verified").length;
+
+  const today = key(new Date());
+  todayCount.textContent = orders.filter((o) => {
+    const d = toDate(o.createdAt);
+    return d && key(d) === today;
+  }).length;
+}
+
+function renderRecent() {
+  recentOrders.innerHTML = "";
+
+  orders.slice(0, 6).forEach((o) => {
+    const row = document.createElement("div");
+    row.className = "recent-row";
+
+    row.innerHTML = `
+      <div><strong>${escapeHTML(nameOf(o))}</strong><span>${escapeHTML(o.referenceCode || "-")}</span></div>
+      <div><span>จำนวน</span><strong>${Number(o.order?.quantity || 0)} ใบ</strong></div>
+      <div><span>ยอด</span><strong>${money(o.order?.totalAmount || 0)}</strong></div>
+      <button data-id="${o.id}">รายละเอียด</button>
+    `;
+
+    recentOrders.appendChild(row);
+  });
+
+  attachButtons();
+}
+
+function renderTable() {
+  const q = searchInput.value.trim().toLowerCase();
+  const s = statusFilter.value;
+  const l = levelFilter.value;
+
+  const filtered = orders.filter((o) => {
+    const c = o.customer || {};
+
+    if (s && statusOf(o) !== s) return false;
+    if (l && c.level !== l) return false;
+
+    if (!q) return true;
+
+    return [
+      o.referenceCode,
+      nameOf(o),
+      c.studentId,
+      c.phone,
+      c.level,
+      c.room,
+      c.contact?.value
+    ].filter(Boolean).join(" ").toLowerCase().includes(q);
+  });
+
+  orderTableBody.innerHTML = "";
+
+  filtered.forEach((o) => {
+    const c = o.customer || {};
+    const d = toDate(o.createdAt);
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td><strong>${escapeHTML(nameOf(o))}</strong><br><small>${escapeHTML(c.studentId || "-")}</small></td>
+      <td>${escapeHTML(c.level || "-")} / ${escapeHTML(c.room || "-")}</td>
+      <td>${Number(o.order?.quantity || 0)} ใบ</td>
+      <td>${money(o.order?.totalAmount || 0)}</td>
+      <td>${statusBadge(o)}</td>
+      <td>${d ? formatDate(d) : "-"}</td>
+      <td><button class="small-btn" data-id="${o.id}">ดู</button></td>
+    `;
+
+    orderTableBody.appendChild(tr);
+  });
+
+  attachButtons();
+}
+
+searchInput.addEventListener("input", renderTable);
+statusFilter.addEventListener("change", renderTable);
+levelFilter.addEventListener("change", renderTable);
+refreshBtn.addEventListener("click", renderAll);
+
+function attachButtons() {
+  document.querySelectorAll("[data-id]").forEach((btn) => {
+    btn.onclick = () => openDetail(btn.dataset.id);
+  });
+}
+
+function openDetail(id) {
+  const o = orders.find((x) => x.id === id);
+  if (!o) return;
+
+  selectedId = id;
+
+  const c = o.customer || {};
+
+  dReference.textContent = o.referenceCode || "-";
+  dStudentId.textContent = c.studentId || "-";
+  dName.textContent = nameOf(o);
+  dClass.textContent = `${c.level || "-"} / ห้อง ${c.room || "-"}`;
+  dPhone.textContent = c.phone || "-";
+  dContact.textContent = `${c.contact?.type === "instagram" ? "Instagram" : "Facebook"} · ${c.contact?.value || "-"}`;
+  dQuantity.textContent = `${Number(o.order?.quantity || 0)} ใบ`;
+  dTotal.textContent = money(o.order?.totalAmount || 0);
+  dSlip.src = o.payment?.slipData || "";
+
+  detailModal.classList.remove("hidden");
+}
+
+document.querySelectorAll("[data-close]").forEach((el) => {
+  el.addEventListener("click", () => detailModal.classList.add("hidden"));
+});
+
+document.querySelectorAll("[data-status]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    if (!selectedId) return;
+
+    const s = btn.dataset.status;
+
+    await update(ref(db, `preorders/${selectedId}`), {
+      "payment/status": s,
+      status: s === "verified" ? "payment_verified" : s === "rejected" ? "payment_issue" : "pending_review",
+      reviewedAt: Date.now(),
+      reviewedBy: currentAdmin?.username || "admin"
+    });
+
+    detailModal.classList.add("hidden");
+    showToast("อัปเดตสถานะแล้ว");
+  });
+});
+
+function statusOf(o) {
+  return o.payment?.status || "pending";
+}
+
+function statusBadge(o) {
+  const s = statusOf(o);
+  const label = {
+    pending: "รอตรวจสอบ",
+    verified: "ยืนยันแล้ว",
+    rejected: "มีปัญหา"
+  }[s] || "รอตรวจสอบ";
+
+  return `<span class="status ${s}">${label}</span>`;
+}
+
+function nameOf(o) {
+  const c = o.customer || {};
+  return `${c.prefix || ""}${c.firstName || ""} ${c.lastName || ""}`.trim();
+}
+
+function normalizeUsername(v) {
+  return String(v || "").trim().toLowerCase().replace(/[.#$\[\]\/]/g, "");
+}
+
+async function sha256(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+
+  return [...new Uint8Array(hash)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function money(v) {
+  return `฿${Number(v || 0).toLocaleString("th-TH")}`;
+}
+
+function toDate(v) {
+  return typeof v === "number" ? new Date(v) : null;
+}
+
+function key(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function formatDate(d) {
+  return new Intl.DateTimeFormat("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(d);
+}
+
+function escapeHTML(v = "") {
+  return String(v)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function showToast(message) {
+  const container = document.getElementById("toastContainer");
+  container.innerHTML = `<div class="toast">${escapeHTML(message)}</div>`;
+
+  setTimeout(() => {
+    container.innerHTML = "";
+  }, 3500);
+}

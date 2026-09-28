@@ -1,6 +1,116 @@
-<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#5b21b6"><title>Pre-order Admin</title><link rel="icon" href="./favicon.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="./admin.css"></head><body>
-<div class="bg"></div><section id="loginScreen" class="login"><div class="login-card"><img src="./img/sckc.svg"><small>PRE-ORDER ADMIN</small><h1>ระบบจัดการพรีออเดอร์</h1><p>Say No Plastic Say Hi ถุงผ้า</p><form id="loginForm"><label>ชื่อผู้ใช้<input id="username" required></label><label>รหัสผ่าน<input id="password" type="password" required></label><label class="remember"><input id="remember" type="checkbox" checked> จำการเข้าสู่ระบบ 7 วัน</label><button id="loginBtn" class="primary full"><span id="loginText">เข้าสู่ระบบ</span><i id="loginLoader" class="loader hidden"></i></button></form></div></section>
-<div id="adminApp" class="layout hidden"><aside><div class="brand"><img src="./img/sckc.svg"><div><strong>Pre-order</strong><span>Admin Dashboard</span></div></div><nav><button class="nav active" data-view="dashboard">⌂ ภาพรวม</button><button class="nav" data-view="orders">▤ คำสั่งซื้อทั้งหมด</button></nav><div class="bottom"><div class="account"><b>A</b><span id="adminUser">Admin</span></div><button id="logout" class="logout">ออกจากระบบ</button></div></aside><main><header><div><small>ADMIN DASHBOARD</small><h1 id="title">ภาพรวมพรีออเดอร์</h1></div><button id="refresh" class="ghost">↻ รีเฟรช</button></header>
-<section id="dashboard" class="view active"><div class="stats"><article class="featured"><span>คำสั่งซื้อทั้งหมด</span><strong id="totalOrders">0</strong><small>รายการ</small></article><article><span>จำนวนกระเป๋ารวม</span><strong id="totalBags">0</strong><small>ใบ</small></article><article><span>ยอดเงินรวม</span><strong id="totalRevenue">฿0</strong><small>ตามคำสั่งซื้อ</small></article><article><span>รอตรวจสอบ</span><strong id="pendingCount">0</strong><small>รายการ</small></article><article><span>ยืนยันแล้ว</span><strong id="verifiedCount">0</strong><small>รายการ</small></article><article><span>สั่งวันนี้</span><strong id="todayCount">0</strong><small>รายการ</small></article></div><section class="panel"><div class="panel-head"><div><small>RECENT ORDERS</small><h2>คำสั่งซื้อล่าสุด</h2></div><button id="showAll" class="text">ดูทั้งหมด →</button></div><div id="recent"></div><div id="recentEmpty" class="empty hidden">ยังไม่มีคำสั่งซื้อ</div></section></section>
-<section id="orders" class="view"><section class="panel"><div class="panel-head wrap"><div><small>ALL PRE-ORDERS</small><h2>รายการพรีออเดอร์ทั้งหมด</h2></div><div class="filters"><input id="search" placeholder="ค้นหาชื่อ รหัส เบอร์โทร เลขอ้างอิง..."><select id="statusFilter"><option value="">ทุกสถานะ</option><option value="pending">รอตรวจสอบ</option><option value="verified">ยืนยันแล้ว</option><option value="rejected">มีปัญหา</option></select><select id="levelFilter"><option value="">ทุกชั้น</option><option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option><option>ปวช.1</option><option>ปวช.2</option><option>ปวช.3</option></select></div></div><div class="table"><table><thead><tr><th>ผู้สั่งซื้อ</th><th>ชั้น</th><th>จำนวน</th><th>ยอด</th><th>สถานะ</th><th>วันที่</th><th></th></tr></thead><tbody id="tbody"></tbody></table><div id="emptyOrders" class="empty hidden">ไม่พบข้อมูล</div></div></section></section></main></div>
-<div id="detail" class="modal hidden"><div class="overlay" data-close></div><div class="detail-card"><button class="close" data-close>×</button><small>ORDER DETAIL</small><h2>รายละเอียดคำสั่งซื้อ</h2><div class="detail-layout"><div><div class="detail-grid"><div><span>หมายเลข</span><b id="dRef">-</b></div><div><span>รหัสนักเรียน</span><b id="dStudent">-</b></div><div><span>ชื่อ</span><b id="dName">-</b></div><div><span>ชั้น / ห้อง</span><b id="dClass">-</b></div><div><span>เบอร์โทร</span><b id="dPhone">-</b></div><div><span>ช่องทาง</span><b id="dContact">-</b></div><div><span>จำนวน</span><b id="dQty">-</b></div><div><span>ราคา/ใบ</span><b id="dUnit">-</b></div><div class="wide total"><span>ยอดชำระ</span><b id="dTotal">-</b></div><div class="wide"><span>วันที่สั่ง</span><b id="dDate">-</b></div></div><div class="status-edit"><span>สถานะการชำระเงิน</span><div><button data-status="pending">รอตรวจสอบ</button><button data-status="verified">ยืนยันแล้ว</button><button data-status="rejected">มีปัญหา</button></div></div></div><div class="slip"><span>หลักฐานการชำระเงิน</span><img id="dSlip"><a id="openSlip" target="_blank" class="primary">เปิดรูปเต็ม ↗</a></div></div></div></div><div id="toast"></div><script type="module" src="./admin.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pre-order Admin</title>
+  <link rel="icon" href="./favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <img src="./img/sckc.svg" class="admin-logo" alt="">
+      <span>PRE-ORDER ADMIN</span>
+      <h1>ระบบจัดการพรีออเดอร์</h1>
+      <form id="loginForm">
+        <input id="username" placeholder="Username" required>
+        <input id="password" type="password" placeholder="Password" required>
+        <label class="remember"><input id="rememberLogin" type="checkbox" checked> จำการเข้าสู่ระบบ 7 วัน</label>
+        <button id="loginBtn" type="submit">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </section>
+
+  <div id="adminApp" class="admin-layout hidden">
+    <aside class="admin-side">
+      <img src="./img/sckc.svg" alt="">
+      <h2>Pre-order Admin</h2>
+      <button class="nav active" data-view="dashboard">ภาพรวม</button>
+      <button class="nav" data-view="orders">คำสั่งซื้อทั้งหมด</button>
+      <button id="logoutBtn" class="logout">ออกจากระบบ</button>
+    </aside>
+
+    <main class="admin-main">
+      <header>
+        <div><span>ADMIN DASHBOARD</span><h1 id="pageTitle">ภาพรวมพรีออเดอร์</h1></div>
+        <button id="refreshBtn">รีเฟรช</button>
+      </header>
+
+      <section id="dashboardView" class="view active">
+        <div class="stats">
+          <article><span>คำสั่งซื้อทั้งหมด</span><strong id="totalOrders">0</strong></article>
+          <article><span>จำนวนกระเป๋ารวม</span><strong id="totalBags">0</strong></article>
+          <article><span>ยอดเงินรวม</span><strong id="totalRevenue">฿0</strong></article>
+          <article><span>รอตรวจสอบ</span><strong id="pendingCount">0</strong></article>
+          <article><span>ยืนยันแล้ว</span><strong id="verifiedCount">0</strong></article>
+          <article><span>สั่งวันนี้</span><strong id="todayCount">0</strong></article>
+        </div>
+
+        <div class="panel">
+          <h2>คำสั่งซื้อล่าสุด</h2>
+          <div id="recentOrders"></div>
+        </div>
+      </section>
+
+      <section id="ordersView" class="view">
+        <div class="panel">
+          <div class="filters">
+            <input id="searchInput" placeholder="ค้นหาชื่อ รหัสนักเรียน เบอร์โทร เลขอ้างอิง">
+            <select id="statusFilter">
+              <option value="">ทุกสถานะ</option>
+              <option value="pending">รอตรวจสอบ</option>
+              <option value="verified">ยืนยันแล้ว</option>
+              <option value="rejected">มีปัญหา</option>
+            </select>
+            <select id="levelFilter">
+              <option value="">ทุกชั้น</option>
+              <option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option>
+              <option>ปวช.1</option><option>ปวช.2</option><option>ปวช.3</option>
+            </select>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>ผู้สั่งซื้อ</th><th>ชั้น</th><th>จำนวน</th><th>ยอด</th><th>สถานะ</th><th>วันที่</th><th></th></tr>
+              </thead>
+              <tbody id="orderTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="detailModal" class="modal hidden">
+    <div class="modal-bg" data-close></div>
+    <div class="detail-card">
+      <button class="close" data-close>×</button>
+      <h2>รายละเอียดคำสั่งซื้อ</h2>
+      <div class="detail-grid">
+        <div><span>เลขอ้างอิง</span><strong id="dReference">-</strong></div>
+        <div><span>รหัสนักเรียน</span><strong id="dStudentId">-</strong></div>
+        <div><span>ชื่อ</span><strong id="dName">-</strong></div>
+        <div><span>ชั้น / ห้อง</span><strong id="dClass">-</strong></div>
+        <div><span>เบอร์โทร</span><strong id="dPhone">-</strong></div>
+        <div><span>ช่องทาง</span><strong id="dContact">-</strong></div>
+        <div><span>จำนวน</span><strong id="dQuantity">-</strong></div>
+        <div><span>ยอด</span><strong id="dTotal">-</strong></div>
+      </div>
+
+      <img id="dSlip" class="admin-slip" alt="สลิป">
+
+      <div class="status-actions">
+        <button data-status="pending">รอตรวจสอบ</button>
+        <button data-status="verified">ยืนยันแล้ว</button>
+        <button data-status="rejected">มีปัญหา</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+<defs><linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#f4efff"/><stop offset=".58" stop-color="#fffaf0"/><stop offset="1" stop-color="#efe7ff"/></linearGradient></defs>
+<rect width="900" height="900" rx="70" fill="url(#bg)"/>
+<ellipse cx="450" cy="730" rx="260" ry="55" fill="#4c1d95" opacity=".12"/>
+<path d="M270 260h360l-35 460H305z" fill="#f7ecd0"/>
+<path d="M355 265c0-130 190-130 190 0" fill="none" stroke="#e5d6af" stroke-width="35" stroke-linecap="round"/>
+<text x="450" y="430" text-anchor="middle" font-family="Arial" font-weight="700" font-size="58" fill="#4c1d95">SAY NO</text>
+<text x="450" y="500" text-anchor="middle" font-family="Arial" font-weight="900" font-size="78" fill="#7c3aed">PLASTIC</text>
+<text x="450" y="560" text-anchor="middle" font-family="Arial" font-weight="700" font-size="34" fill="#b18422">SAY HI BAG</text>
+<text x="450" y="835" text-anchor="middle" font-family="Arial" font-size="24" fill="#786f80">Replace with real product photo</text>
+</svg>
