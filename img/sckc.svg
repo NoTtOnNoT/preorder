@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-<defs><linearGradient id="p" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#4c1d95"/><stop offset=".65" stop-color="#7c3aed"/><stop offset="1" stop-color="#d4a62a"/></linearGradient></defs>
-<circle cx="60" cy="60" r="55" fill="url(#p)" stroke="#f3d77c" stroke-width="5"/>
-<path d="M60 25l9 18 20 3-15 14 4 20-18-10-18 10 4-20-15-14 20-3z" fill="#fff3bd"/>
-<path d="M38 82h44v13H38z" fill="#fff"/>
-<text x="60" y="92" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" font-weight="700" fill="#5b21b6">SCKC</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#4c1d95"/><stop offset=".7" stop-color="#7c3aed"/><stop offset="1" stop-color="#d4a62a"/></linearGradient></defs><circle cx="60" cy="60" r="55" fill="url(#g)" stroke="#f3d77c" stroke-width="5"/><path d="M60 25l9 18 20 3-15 14 4 20-18-10-18 10 4-20-15-14 20-3z" fill="#fff3bd"/><text x="60" y="93" text-anchor="middle" font-family="Arial" font-size="9" font-weight="700" fill="#fff">SCKC</text></svg>
