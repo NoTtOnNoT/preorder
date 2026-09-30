@@ -30,7 +30,7 @@
         "order": {
           ".validate": "newData.hasChildren(['unitPrice','quantity','totalAmount'])",
           "unitPrice": {
-            ".validate": "newData.isNumber() && newData.val() == 139"
+            ".validate": "newData.isNumber() && newData.val() == 129"
           },
           "quantity": {
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10"

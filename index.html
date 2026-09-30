@@ -54,7 +54,7 @@
     <div>
       <small>PRE-ORDER ITEM</small>
       <strong>กระเป๋าผ้า Say No Plastic</strong>
-      <span>฿139 / ใบ</span>
+      <span>฿129 / ใบ</span>
     </div>
   </div>
 
@@ -80,6 +80,38 @@
     </div>
   </section>
 
+
+  <!-- TEACHER LOGIN -->
+  <section id="teacherLoginScreen" class="screen hidden">
+    <header class="topbar">
+      <button id="teacherLoginBack" class="ghost">← หน้าแรก</button>
+      <div class="mini-brand">
+        <strong>Teacher Portal</strong>
+        <span>เข้าสู่ระบบด้วยเบอร์โทรศัพท์</span>
+      </div>
+    </header>
+
+    <div class="teacher-login-shell">
+      <section class="teacher-login-card">
+        <span class="eyebrow">TEACHER ACCESS</span>
+        <h2>เข้าสู่ระบบสำหรับคุณครู</h2>
+        <p>กรอกเบอร์โทรศัพท์ที่ใช้สำหรับพรีออเดอร์ ระบบจะใช้เบอร์นี้แทนรหัสผู้ใช้ของคุณครู</p>
+
+        <form id="teacherLoginForm">
+          <label>เบอร์โทรศัพท์</label>
+          <div class="teacher-login-phone">
+            <b>+66</b>
+            <input id="teacherLoginPhone" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="0XXXXXXXXX">
+          </div>
+          <div id="teacherLoginStatus" class="teacher-phone-note">กรอกเบอร์โทร 9–10 หลัก</div>
+          <button id="teacherLoginBtn" class="primary wide" type="submit">เข้าสู่ระบบสำหรับครู →</button>
+        </form>
+
+        <small>ระบบจะจดจำการเข้าสู่ระบบไว้ 7 วันบนอุปกรณ์นี้</small>
+      </section>
+    </div>
+  </section>
+
   <!-- STUDENT HUB -->
   <section id="studentHub" class="screen hidden">
     <header class="topbar">
@@ -87,7 +119,7 @@
       <button id="studentLogoutBtn" class="ghost">ออกจากบัญชี</button>
     </header>
     <div class="hub-shell">
-      <div class="hub-head"><span class="eyebrow">STUDENT COUNCIL</span><h2>สวัสดี <span id="hubStudentId">-</span></h2><p id="hubStudentType">-</p></div>
+      <div class="hub-head"><span class="eyebrow">STUDENT COUNCIL</span><h2 id="studentHubGreeting">สวัสดี</h2><p id="hubStudentType">-</p></div>
       <div class="portal-stats">
         <div><span>คำสั่งซื้อ</span><strong id="studentStatTotal">0</strong></div>
         <div><span>รอตรวจสอบ</span><strong id="studentStatPending">0</strong></div>
@@ -151,8 +183,8 @@
           <section class="student-step form-page" data-ss="3">
             <div class="page-inner">
               <div class="section-title"><span>03</span><div><small>ORDER</small><h2>เลือกจำนวนกระเป๋า</h2><p>เลือกได้ 1–10 ใบ ระบบคำนวณยอดอัตโนมัติ</p></div></div>
-              <div class="product-card"><img src="./img/product-bag.png" onerror="this.onerror=null;this.src='./img/product-bag.svg'" alt=""><div><span class="tag">PRE-ORDER</span><h3>กระเป๋าผ้า Say No Plastic</h3><strong class="price">฿139 / ใบ</strong><label>จำนวน<select id="sQuantity"></select></label></div></div>
-              <div class="amount-card"><span>ยอดที่ต้องชำระ</span><strong id="sTotal">฿139</strong></div>
+              <div class="product-card"><img src="./img/product-bag.png" onerror="this.onerror=null;this.src='./img/product-bag.svg'" alt=""><div><span class="tag">PRE-ORDER</span><h3>กระเป๋าผ้า Say No Plastic</h3><strong class="price">฿129 / ใบ</strong><label>จำนวน<select id="sQuantity"></select></label></div></div>
+              <div class="amount-card"><span>ยอดที่ต้องชำระ</span><strong id="sTotal">฿129</strong></div>
             </div>
             <div class="actions"><button class="secondary prev-student" type="button">← ย้อนกลับ</button><button class="primary next-student" type="button">ชำระเงิน →</button></div>
           </section>
@@ -160,7 +192,7 @@
           <section class="student-step form-page" data-ss="4">
             <div class="page-inner">
               <div class="section-title"><span>04</span><div><small>PAYMENT</small><h2>ชำระเงินและแนบสลิป</h2><p>สแกน QR ตามยอดที่แสดงและแนบหลักฐาน</p></div></div>
-              <div class="payment-grid"><div class="qr-card"><span>ยอดชำระ</span><strong id="sPayAmount">฿139</strong><img id="sQr" src="./qr/qr-1.svg" alt="QR"><small id="sQrInfo">สำหรับ 1 ใบ</small></div><div><div id="sUpload" class="upload-zone"><input id="sSlipFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><b>＋</b><strong>แนบสลิป</strong><span>แตะเพื่อเลือกรูป</span></div><div id="sSlipPreview" class="slip-preview hidden"><img id="sSlipImg"><div><strong id="sSlipName">-</strong><span id="sSlipSize">-</span></div><button id="sRemoveSlip" type="button">×</button></div></div></div>
+              <div class="payment-grid"><div class="qr-card"><span>ยอดชำระ</span><strong id="sPayAmount">฿129</strong><img id="sQr" src="./qr/qr-1.png" onerror="this.onerror=null;this.src='./payment-qr.svg'" alt="QR สำหรับชำระเงิน"><small id="sQrInfo">สำหรับ 1 ใบ</small></div><div><div id="sUpload" class="upload-zone"><input id="sSlipFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><b>＋</b><strong>แนบสลิป</strong><span>แตะเพื่อเลือกรูป</span></div><div id="sSlipPreview" class="slip-preview hidden"><img id="sSlipImg"><div><strong id="sSlipName">-</strong><span id="sSlipSize">-</span></div><button id="sRemoveSlip" type="button">×</button></div></div></div>
             </div>
             <div class="actions"><button class="secondary prev-student" type="button">← ย้อนกลับ</button><button class="primary next-student" type="button">ตรวจสอบ →</button></div>
           </section>
@@ -180,7 +212,7 @@
     <aside id="studentSummaryDrawer" class="summary-drawer">
       <div class="drawer-head"><h3>ข้อมูลคำสั่งซื้อ</h3><button id="closeStudentSummary" type="button">×</button></div>
       <img src="./img/product-bag.png" onerror="this.onerror=null;this.src='./img/product-bag.svg'" alt="">
-      <div class="side-row"><span>รหัส</span><strong id="sideStudentId">-</strong></div><div class="side-row"><span>ชื่อ</span><strong id="sideName">ยังไม่ได้กรอก</strong></div><div class="side-row"><span>ชั้น</span><strong id="sideClass">ยังไม่ได้เลือก</strong></div><div class="side-row"><span>เบอร์</span><strong id="sidePhone">ยังไม่ได้กรอก</strong></div><div class="side-row"><span>จำนวน</span><strong id="sideQty">1 ใบ</strong></div><div class="side-row total"><span>ยอด</span><strong id="sideTotal">฿139</strong></div>
+      <div class="side-row"><span>รหัส</span><strong id="sideStudentId">-</strong></div><div class="side-row"><span>ชื่อ</span><strong id="sideName">ยังไม่ได้กรอก</strong></div><div class="side-row"><span>ชั้น</span><strong id="sideClass">ยังไม่ได้เลือก</strong></div><div class="side-row"><span>เบอร์</span><strong id="sidePhone">ยังไม่ได้กรอก</strong></div><div class="side-row"><span>จำนวน</span><strong id="sideQty">1 ใบ</strong></div><div class="side-row total"><span>ยอด</span><strong id="sideTotal">฿129</strong></div>
     </aside>
     <div id="studentDrawerBackdrop" class="drawer-backdrop hidden"></div>
   </section>
@@ -214,18 +246,18 @@
   <!-- TEACHER HUB -->
   <section id="teacherHubScreen" class="screen hidden">
     <header class="topbar">
-      <button id="teacherHubBack" class="ghost">← หน้าแรก</button>
+      <button id="teacherLogoutBtn" class="ghost">ออกจากระบบครู</button>
       <div class="mini-brand">
         <strong>Teacher Portal</strong>
-        <span>พรีออเดอร์และรับกระเป๋า</span>
+        <span id="teacherTopbarPhone">-</span>
       </div>
     </header>
 
     <div class="hub-shell">
       <div class="hub-head">
         <span class="eyebrow">TEACHER PORTAL</span>
-        <h2>สำหรับคุณครู</h2>
-        <p>กรอกเบอร์โทรศัพท์เพื่อค้นหาคำสั่งซื้อเดิม หรือเริ่มพรีออเดอร์ใหม่</p>
+        <h2 id="teacherHubGreeting">สำหรับคุณครู</h2>
+        <p id="teacherHubIdentity">เลือกพรีออเดอร์ใหม่ หรือดูรายการพรีออเดอร์ของคุณ</p>
       </div>
 
       <div class="portal-stats teacher-stats">
@@ -234,52 +266,29 @@
         <div><span>พร้อมรับ</span><strong id="teacherStatReady">0</strong></div>
       </div>
 
-      <div class="teacher-lookup-card">
-        <div>
-          <small>TEACHER LOOKUP</small>
-          <h3>ค้นหาคำสั่งซื้อด้วยเบอร์โทรศัพท์</h3>
-          <p>ใช้เบอร์เดียวกับที่กรอกตอนพรีออเดอร์</p>
-        </div>
-        <div class="teacher-lookup-form">
-          <input id="teacherLookupPhone" inputmode="numeric" maxlength="10" placeholder="0XXXXXXXXX">
-          <button id="teacherLookupBtn" class="primary" type="button">ค้นหา</button>
-        </div>
-        <div id="teacherLookupResult" class="teacher-lookup-result neutral">
-          ยังไม่ได้ค้นหาคำสั่งซื้อ
-        </div>
-      </div>
-
-      <div class="function-grid">
+      <div class="function-grid teacher-function-grid">
         <button id="teacherPreorderCard" class="function-card preorder" type="button">
           <div class="function-icon">👜</div>
           <div class="function-content">
             <span>FUNCTION 01</span>
             <h3>พรีออเดอร์กระเป๋า</h3>
-            <p>กรอกข้อมูล → เลือกจำนวน → ชำระเงินและแนบสลิป</p>
+            <p>กรอกข้อมูล เลือกจำนวน ชำระเงิน และตรวจสอบข้อมูลก่อนยืนยัน</p>
             <div id="teacherPreorderStatusBadge" class="status-pill neutral">เริ่มพรีออเดอร์</div>
           </div>
           <b>→</b>
         </button>
 
-        <button id="teacherPickupCard" class="function-card pickup locked" type="button">
+        <button id="teacherPickupCard" class="function-card pickup" type="button">
           <div class="function-icon">✓</div>
           <div class="function-content">
             <span>FUNCTION 02</span>
-            <h3>การรับกระเป๋า</h3>
-            <p id="teacherPickupCardText">กรอกเบอร์โทรและค้นหาคำสั่งซื้อก่อน</p>
-            <div id="teacherPickupStatusBadge" class="status-pill locked-pill">ยังไม่พร้อมใช้งาน</div>
+            <h3>รายการพรีออเดอร์ของฉัน</h3>
+            <p id="teacherPickupCardText">ดูรายการ สถานะการเงิน และสถานะการรับสินค้า</p>
+            <div id="teacherPickupStatusBadge" class="status-pill neutral">ดูรายการของฉัน</div>
           </div>
           <b>→</b>
         </button>
       </div>
-
-      <section id="teacherOrdersSection" class="multi-orders-section hidden">
-        <div class="multi-orders-head">
-          <div><span>TEACHER ORDERS</span><h3>รายการพรีออเดอร์จากเบอร์นี้</h3></div>
-          <strong id="teacherOrdersCount">0 รายการ</strong>
-        </div>
-        <div id="teacherOrdersList" class="multi-orders-list"></div>
-      </section>
     </div>
   </section>
 
@@ -287,10 +296,19 @@
   <section id="teacherPickupScreen" class="screen hidden">
     <header class="topbar">
       <button id="backToTeacherHubFromPickup" class="ghost">← เมนูครู</button>
-      <div class="mini-brand"><strong>การรับกระเป๋าสำหรับครู</strong><span>Teacher Pickup</span></div>
+      <div class="mini-brand"><strong>รายการพรีออเดอร์ของฉัน</strong><span>Teacher Orders</span></div>
     </header>
 
     <div class="pickup-shell pickup-detailed">
+
+      <section id="teacherOrdersSection" class="multi-orders-section hidden">
+        <div class="multi-orders-head">
+          <div><span>TEACHER ORDERS</span><h3>รายการพรีออเดอร์ของฉัน</h3></div>
+          <strong id="teacherOrdersCount">0 รายการ</strong>
+        </div>
+        <div id="teacherOrdersList" class="multi-orders-list"></div>
+      </section>
+
       <section id="teacherPickupOrderSelector" class="pickup-order-selector hidden">
         <div class="selector-head"><span>เลือกคำสั่งซื้อ</span><strong id="teacherPickupOrderCount">0 รายการ</strong></div>
         <div id="teacherPickupOrderList" class="pickup-order-list"></div>
@@ -341,22 +359,54 @@
 
     <div class="fullscreen-form-shell">
       <section class="form-panel full-form-panel teacher-full-panel">
-        <div class="steps teacher-steps teacher-three-steps">
+        <div class="steps teacher-steps teacher-four-steps">
           <div class="step-dot active" data-tp="1"><b>1</b><span>ข้อมูลครู</span></div>
-          <div class="step-dot" data-tp="2"><b>2</b><span>เลือกจำนวน</span></div>
+          <div class="step-dot" data-tp="2"><b>2</b><span>จำนวน</span></div>
           <div class="step-dot" data-tp="3"><b>3</b><span>ชำระเงิน</span></div>
+          <div class="step-dot" data-tp="4"><b>4</b><span>สรุป</span></div>
         </div>
-        <div id="teacherProgressText" class="progress-text">ขั้นตอน 1 จาก 3 · ข้อมูลครู</div>
+        <div id="teacherProgressText" class="progress-text">ขั้นตอน 1 จาก 4 · ข้อมูลครู</div>
+
         <form id="teacherForm">
+          <input id="tPhone" type="hidden">
+
+          <!-- STEP 1: TEACHER INFORMATION -->
           <section class="teacher-step active form-page" data-ts="1">
             <div class="page-inner">
-              <div class="section-title"><span>01</span><div><small>TEACHER INFORMATION</small><h2>ข้อมูลผู้สั่งซื้อสำหรับครู</h2><p>กรอกคำนำหน้า ชื่อ นามสกุล และเบอร์โทรศัพท์</p></div></div>
-              <div class="grid three"><label>คำนำหน้า<select id="tPrefix"><option value="">เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option></select></label><label>ชื่อ<input id="tFirstName" maxlength="60"></label><label>นามสกุล<input id="tLastName" maxlength="60"></label></div>
-              <div class="grid one"><label>เบอร์โทรศัพท์<input id="tPhone" inputmode="numeric" maxlength="10" placeholder="0XXXXXXXXX"></label></div>
+              <div class="section-title">
+                <span>01</span>
+                <div>
+                  <small>TEACHER INFORMATION</small>
+                  <h2>ข้อมูลผู้สั่งซื้อสำหรับครู</h2>
+                  <p>กรอกคำนำหน้า ชื่อ และนามสกุล ระบบจะจำข้อมูลจากพรีออเดอร์ล่าสุดให้เมื่อมีข้อมูลแล้ว</p>
+                </div>
+              </div>
+
+              <div class="grid three">
+                <label>คำนำหน้า
+                  <select id="tPrefix">
+                    <option value="">เลือก</option>
+                    <option>นาย</option>
+                    <option>นาง</option>
+                    <option>นางสาว</option>
+                  </select>
+                </label>
+                <label>ชื่อ<input id="tFirstName" maxlength="60" autocomplete="given-name"></label>
+                <label>นามสกุล<input id="tLastName" maxlength="60" autocomplete="family-name"></label>
+              </div>
+
+              <div class="teacher-identity-strip">
+                <span>เข้าสู่ระบบด้วยเบอร์</span>
+                <strong id="teacherIdentityPhone">-</strong>
+              </div>
             </div>
-            <div class="actions end"><button id="teacherNext" class="primary" type="button">ถัดไป →</button></div>
+
+            <div class="actions end">
+              <button id="teacherNext" class="primary" type="button">ถัดไป →</button>
+            </div>
           </section>
 
+          <!-- STEP 2: QUANTITY -->
           <section class="teacher-step form-page" data-ts="2">
             <div class="page-inner">
               <div class="section-title">
@@ -373,22 +423,24 @@
                   <img src="./img/product-bag.png" onerror="this.onerror=null;this.src='./img/product-bag.svg'" alt="">
                   <div>
                     <span>ราคา</span>
-                    <strong>฿139 / ใบ</strong>
+                    <strong>฿129 / ใบ</strong>
                     <label>จำนวน<select id="tQuantity"></select></label>
                     <div class="teacher-amount">
                       <span>ยอดที่ต้องชำระ</span>
-                      <strong id="tTotal">฿139</strong>
+                      <strong id="tTotal">฿129</strong>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
             <div class="actions">
               <button id="teacherBack" class="secondary" type="button">← ย้อนกลับ</button>
               <button id="teacherPaymentNext" class="primary" type="button">ไปชำระเงิน →</button>
             </div>
           </section>
 
+          <!-- STEP 3: PAYMENT -->
           <section class="teacher-step form-page" data-ts="3">
             <div class="page-inner">
               <div class="section-title">
@@ -396,15 +448,15 @@
                 <div>
                   <small>PAYMENT</small>
                   <h2>ชำระเงินและแนบสลิป</h2>
-                  <p>สแกน QR ตามยอดที่เลือก จากนั้นแนบหลักฐานการชำระเงิน</p>
+                  <p>สแกน QR ตามจำนวนที่เลือก จากนั้นแนบหลักฐานการชำระเงิน</p>
                 </div>
               </div>
 
               <div class="payment-grid teacher-payment">
                 <div class="qr-card">
                   <span>สแกนชำระเงิน</span>
-                  <strong id="tPayAmount">฿139</strong>
-                  <img id="tQr" src="./qr/qr-1.svg" alt="QR">
+                  <strong id="tPayAmount">฿129</strong>
+                  <img id="tQr" src="./qr/qr-1.png" onerror="this.onerror=null;this.src='./payment-qr.svg'" alt="QR สำหรับชำระเงิน">
                   <small id="tQrInfo">สำหรับ 1 ใบ</small>
                 </div>
 
@@ -426,15 +478,54 @@
                   </div>
                 </div>
               </div>
-
-              <label class="check">
-                <input id="tConfirm" type="checkbox">
-                ยืนยันว่าข้อมูล จำนวน และการชำระเงินถูกต้อง
-              </label>
             </div>
 
             <div class="actions">
               <button id="teacherPaymentBack" class="secondary" type="button">← ย้อนกลับ</button>
+              <button id="teacherReviewNext" class="primary" type="button">ตรวจสอบข้อมูล →</button>
+            </div>
+          </section>
+
+          <!-- STEP 4: REVIEW -->
+          <section class="teacher-step form-page" data-ts="4">
+            <div class="page-inner">
+              <div class="section-title">
+                <span>04</span>
+                <div>
+                  <small>FINAL REVIEW</small>
+                  <h2>ตรวจสอบข้อมูลก่อนยืนยัน</h2>
+                  <p>ตรวจสอบข้อมูลผู้สั่งซื้อ จำนวน และยอดชำระเงินให้ถูกต้องก่อนส่งพรีออเดอร์</p>
+                </div>
+              </div>
+
+              <div class="teacher-review-card">
+                <div class="teacher-review-head">
+                  <img src="./img/product-bag.png" onerror="this.onerror=null;this.src='./img/product-bag.svg'" alt="">
+                  <div>
+                    <span>PRE-ORDER SUMMARY</span>
+                    <h3>กระเป๋าผ้า Say No Plastic</h3>
+                    <p>ราคา 129 บาท / ใบ</p>
+                  </div>
+                </div>
+
+                <div class="teacher-review-grid">
+                  <div><span>ชื่อผู้สั่งซื้อ</span><strong id="tReviewName">-</strong></div>
+                  <div><span>เบอร์โทรศัพท์</span><strong id="tReviewPhone">-</strong></div>
+                  <div><span>จำนวน</span><strong id="tReviewQty">-</strong></div>
+                  <div><span>ยอดชำระ</span><strong id="tReviewTotal">-</strong></div>
+                  <div><span>หลักฐานการชำระเงิน</span><strong id="tReviewSlip">-</strong></div>
+                  <div><span>สถานะหลังส่ง</span><strong>รอฝ่ายการเงินตรวจสอบ</strong></div>
+                </div>
+              </div>
+
+              <label class="check teacher-final-confirm">
+                <input id="tConfirm" type="checkbox">
+                ยืนยันว่าข้อมูลทั้งหมดถูกต้องและต้องการส่งพรีออเดอร์
+              </label>
+            </div>
+
+            <div class="actions">
+              <button id="teacherReviewBack" class="secondary" type="button">← ย้อนกลับ</button>
               <button id="submitTeacherOrderBtn" class="primary" type="submit">ยืนยันพรีออเดอร์สำหรับครู</button>
             </div>
           </section>
@@ -445,7 +536,7 @@
     <aside id="teacherSummaryDrawer" class="summary-drawer">
       <div class="drawer-head"><h3>ข้อมูลคำสั่งซื้อ</h3><button id="closeTeacherSummary" type="button">×</button></div>
       <img src="./img/product-bag.png" onerror="this.onerror=null;this.src='./img/product-bag.svg'" alt="">
-      <div class="side-row"><span>ชื่อ</span><strong id="tSideName">ยังไม่ได้กรอก</strong></div><div class="side-row"><span>เบอร์</span><strong id="tSidePhone">ยังไม่ได้กรอก</strong></div><div class="side-row"><span>จำนวน</span><strong id="tSideQty">1 ใบ</strong></div><div class="side-row total"><span>ยอด</span><strong id="tSideTotal">฿139</strong></div>
+      <div class="side-row"><span>ชื่อ</span><strong id="tSideName">ยังไม่ได้กรอก</strong></div><div class="side-row"><span>เบอร์</span><strong id="tSidePhone">ยังไม่ได้กรอก</strong></div><div class="side-row"><span>จำนวน</span><strong id="tSideQty">1 ใบ</strong></div><div class="side-row total"><span>ยอด</span><strong id="tSideTotal">฿129</strong></div>
     </aside>
     <div id="teacherDrawerBackdrop" class="drawer-backdrop hidden"></div>
   </section>

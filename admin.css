@@ -171,3 +171,78 @@ tbody tr:hover{
 @media(max-width:600px){
   .pickup-admin-actions{grid-template-columns:1fr}
 }
+
+
+/* V20.3 Website Analytics */
+.visitor-stat{
+  background:linear-gradient(145deg,#fff,#f8f5ff)!important;
+}
+.visitor-stat small{
+  display:block;
+  margin-top:2px;
+  color:#786f80;
+  font-size:7px;
+}
+.site-analytics-panel{
+  margin-bottom:15px;
+  padding:18px;
+  display:grid;
+  grid-template-columns:1.1fr 1.4fr;
+  gap:18px;
+  align-items:center;
+  border-radius:18px;
+  background:linear-gradient(135deg,#fff,#faf8ff);
+  border:1px solid #ebe4ef;
+  box-shadow:0 12px 35px rgba(59,7,100,.05);
+}
+.site-analytics-panel>div:first-child>span{
+  color:#7c3aed;
+  font-size:7px;
+  font-weight:700;
+  letter-spacing:.12em;
+}
+.site-analytics-panel h2{
+  margin:3px 0;
+  font-size:18px;
+}
+.site-analytics-panel p{
+  margin:0;
+  color:#786f80;
+  font-size:8px;
+}
+.site-analytics-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.site-analytics-grid>div{
+  padding:12px;
+  border-radius:11px;
+  background:#fff;
+  border:1px solid #eee8f1;
+}
+.site-analytics-grid span,
+.site-analytics-grid strong,
+.site-analytics-grid small{
+  display:block;
+}
+.site-analytics-grid span{
+  color:#786f80;
+  font-size:7px;
+}
+.site-analytics-grid strong{
+  margin-top:2px;
+  color:#4c1d95;
+  font-size:17px;
+}
+.site-analytics-grid small{
+  color:#786f80;
+  font-size:7px;
+}
+@media(max-width:900px){
+  .site-analytics-panel{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .site-analytics-grid{grid-template-columns:1fr 1fr}
+  .site-analytics-grid>div:last-child{grid-column:1/-1}
+}

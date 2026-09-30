@@ -236,3 +236,139 @@ systemConfig/
 
 หมายเหตุ: นี่เป็นการจำกัดสิทธิ์ที่หน้าเว็บ/JavaScript
 หากต้องการความปลอดภัยระดับฐานข้อมูลจริง ต้องใช้ Firebase Authentication หรือ backend แล้วล็อก RTDB Rules ตาม role
+
+
+## V17 — QR ตามจำนวนสินค้า
+ระบบเลือก QR อัตโนมัติตามจำนวนที่เลือก:
+- 1 ใบ → `qr/qr-1.png`
+- 2 ใบ → `qr/qr-2.png`
+- ...
+- 10 ใบ → `qr/qr-10.png`
+
+ใช้กับทั้งนักเรียนและครู
+หากไม่พบไฟล์ PNG ระบบจะ fallback ไปที่ `payment-qr.svg`
+
+
+## V18 — ราคาใหม่ 129 บาท
+ปรับราคาต่อใบจาก 139 บาท เป็น 129 บาทแล้วทั้งระบบ
+
+ยอดใหม่:
+- 1 ใบ = 129 บาท
+- 2 ใบ = 258 บาท
+- 3 ใบ = 387 บาท
+- 4 ใบ = 516 บาท
+- 5 ใบ = 645 บาท
+- 6 ใบ = 774 บาท
+- 7 ใบ = 903 บาท
+- 8 ใบ = 1,032 บาท
+- 9 ใบ = 1,161 บาท
+- 10 ใบ = 1,290 บาท
+
+ต้อง Publish `database.rules.preorder.json` ใหม่ใน Firebase Realtime Database Rules
+
+
+## V19 — Teacher Summary + Persistent Login + Realtime
+
+### Teacher preorder 5 steps
+1. เบอร์โทรศัพท์
+2. ข้อมูลครู
+3. เลือกจำนวน
+4. ชำระเงิน + แนบสลิป
+5. สรุปและยืนยัน
+
+- เบอร์โทรเป็นตัวระบุคุณครู คล้ายรหัสนักเรียน
+- จดจำเบอร์ครูไว้ 7 วัน
+- หน้า Summary แสดงชื่อ เบอร์ จำนวน ยอด และสลิป
+- Progress ด้านบนเป็น 5 ขั้นในแถวเดียว ไม่ตกคนละบรรทัด
+
+### Persistent login
+- นักเรียนเข้าสู่ระบบแล้วจะจำ Session 7 วัน
+- รีเฟรชหน้าเว็บแล้วกลับเข้า Student Portal ได้อัตโนมัติ
+- Logout จะลบ Session
+- เบอร์คุณครูถูกจดจำ 7 วันและเติมให้อัตโนมัติ
+
+### Realtime
+- Student orders ใช้ Firebase `onValue()` แบบ realtime
+- Teacher orders ใช้ Firebase `onValue()` ตามเบอร์โทร
+- `systemConfig/pickupOpen` ใช้ realtime เช่นกัน
+- เมื่อฝ่ายการเงินหรือ Admin เปลี่ยนสถานะ หน้าเว็บผู้ใช้จะอัปเดตทันทีโดยไม่ต้อง Refresh
+
+
+## V19.1 Hotfix
+แก้ `Uncaught SyntaxError: Unexpected token '}'` ใน `app.js` บริเวณฟังก์ชัน `saveTeacherDraft()`
+
+สาเหตุ:
+มีโค้ด `localStorage.setItem(...)` ซ้ำและมี `}` เกินมา 1 ตัวจากการรวมโค้ด V19
+
+แก้แล้ว:
+- ลบโค้ดซ้ำ
+- ปิดฟังก์ชัน `saveTeacherDraft()` ให้ถูกต้อง
+- ตรวจ `app.js`, `admin.js`, `finance.js`, `firebase-config.js` ด้วย `node --check` แล้วผ่านทั้งหมด
+
+
+## V20 — Teacher Login → Portal + Name Profiles
+
+### Teacher
+Flow ใหม่:
+หน้าแรก
+→ กด “สำหรับคุณครู”
+→ กรอกเบอร์โทรศัพท์
+→ Teacher Portal
+→ พรีออเดอร์ / รายการพรีออเดอร์ของฉัน
+
+- เบอร์โทรทำหน้าที่เป็นรหัสล็อกอินของครู
+- Session ครูจำไว้ 7 วัน
+- เมื่อเคยพรีออเดอร์แล้ว Teacher Portal จะแสดงคำนำหน้า + ชื่อ + นามสกุลจากออเดอร์ล่าสุด
+- เวลาเริ่มพรีออเดอร์ใหม่ ระบบเติมข้อมูลชื่อครูเดิมให้อัตโนมัติ
+- Teacher preorder เหลือ 4 ขั้น: ข้อมูลครู → จำนวน → ชำระเงิน → สรุป
+
+### Student
+- หลังล็อกอินด้วยรหัสนักเรียน ถ้าเคยพรีออเดอร์แล้ว Student Portal จะแสดงชื่อจากออเดอร์ล่าสุด
+- ถ้ายังไม่เคยพรีออเดอร์ จะแสดงรหัสนักเรียนแทน
+- Realtime ยังทำงานเหมือนเดิม เมื่อ Finance/Admin อัปเดตสถานะ หน้า Portal จะอัปเดตเอง
+
+
+## V20.1 Hotfix
+แก้ SyntaxError ที่ `app.js` บรรทัดประมาณ 908
+
+สาเหตุ:
+บรรทัด event ของปุ่มย้อนกลับ Teacher มีโค้ดซ้ำท้ายบรรทัด:
+`renderTeacherHub();showScreen("teacherHubScreen");});`
+
+แก้แล้วให้เหลือ event listener เพียงชุดเดียว
+
+
+## V20.2 — Audited Hotfix
+
+แก้ Error:
+`TypeError: Cannot set properties of null (setting 'textContent')`
+
+สาเหตุ:
+HTML เปลี่ยนจาก `#hubStudentId` ไปใช้ `#studentHubGreeting`
+แต่ `app.js` ยังมีโค้ดเก่าที่พยายามเขียนค่าให้ `hubStudentId`
+จึงได้ค่า `null` และหยุดทำงานตอนกดเข้าสู่ระบบนักเรียน
+
+แก้แล้ว:
+- เปลี่ยนไปใช้ `studentHubGreeting`
+- ปรับข้อความ Student Portal ให้แสดงรหัสชั่วคราวก่อน
+- เมื่อโหลดออเดอร์เดิมได้ ระบบเปลี่ยนเป็นชื่อจริงอัตโนมัติ
+- ตรวจ ID ที่ JavaScript เรียกเทียบกับ HTML ทั้งไฟล์
+- ตรวจ duplicate ID
+- ตรวจ event target
+- ตรวจ syntax ของ app/admin/finance/firebase-config
+
+
+## V20.3 — Website Visitor / Page View Counter
+
+เพิ่มระบบสถิติการเปิดเว็บไซต์:
+- ทุกครั้งที่เปิดหรือ Refresh `index.html` = 1 page view
+- เก็บยอดรวมที่ `siteStats/pageViews`
+- เก็บรายวัน `siteStats/days/YYYY-MM-DD/pageViews`
+- เก็บเวลาเปิดล่าสุด `siteStats/lastOpenedAt`
+- หน้า Admin (`admin.html` และ `yayakonsuay.html`) แสดงแบบ realtime:
+  - เปิดเว็บไซต์ทั้งหมด
+  - เปิดเว็บไซต์วันนี้
+  - เวลาเปิดล่าสุด
+
+หมายเหตุ:
+ตัวเลขนี้คือจำนวน “ครั้งที่เปิดหน้าเว็บ (Page Views)” ไม่ใช่จำนวนคนแบบ Unique Visitors

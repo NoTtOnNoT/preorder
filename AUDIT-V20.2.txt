@@ -1,0 +1,30 @@
+V20.2 STATIC AUDIT
+
+{
+  "checks": {
+    "app.js": {
+      "ok": true,
+      "stderr": ""
+    },
+    "admin.js": {
+      "ok": true,
+      "stderr": ""
+    },
+    "finance.js": {
+      "ok": true,
+      "stderr": ""
+    },
+    "firebase-config.js": {
+      "ok": true,
+      "stderr": ""
+    }
+  },
+  "audit": {
+    "js_syntax_all_ok": true,
+    "duplicate_html_ids": [],
+    "missing_static_dollar_refs": [],
+    "missing_event_targets": [],
+    "missing_critical_ids": [],
+    "stale_hubStudentId_remaining": false
+  }
+}

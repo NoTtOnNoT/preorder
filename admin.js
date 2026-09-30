@@ -29,6 +29,11 @@ const pendingCount = document.getElementById("pendingCount");
 const verifiedCount = document.getElementById("verifiedCount");
 const todayCount = document.getElementById("todayCount");
 const pickedUpCount = document.getElementById("pickedUpCount");
+const sitePageViews = document.getElementById("sitePageViews");
+const siteTodayViews = document.getElementById("siteTodayViews");
+const siteViewsTotalLarge = document.getElementById("siteViewsTotalLarge");
+const siteViewsTodayLarge = document.getElementById("siteViewsTodayLarge");
+const siteLastOpened = document.getElementById("siteLastOpened");
 
 const recentOrders = document.getElementById("recentOrders");
 const searchInput = document.getElementById("searchInput");
@@ -61,6 +66,7 @@ let selectedId = null;
 let currentAdmin = null;
 let unsubscribe = null;
 let unsubscribeConfig = null;
+let unsubscribeSiteStats = null;
 let pickupOpen = false;
 let pickupOpenedAt = null;
 let pickupOpenedBy = null;
@@ -162,6 +168,10 @@ function clearSession() {
     unsubscribeConfig();
     unsubscribeConfig = null;
   }
+  if (unsubscribeSiteStats) {
+    unsubscribeSiteStats();
+    unsubscribeSiteStats = null;
+  }
 }
 
 logoutBtn.addEventListener("click", () => {
@@ -204,6 +214,35 @@ function subscribeOrders() {
     pickupOpenedBy = config.pickupOpenedBy || null;
     renderPickupControl();
   });
+
+  if (unsubscribeSiteStats) unsubscribeSiteStats();
+  unsubscribeSiteStats = onValue(ref(db, "siteStats"), (snap) => {
+    renderSiteStats(snap.val() || {});
+  });
+}
+
+function adminDateKey(){
+  const d=new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
+function renderSiteStats(stats){
+  const total=Number(stats.pageViews||0);
+  const today=Number(stats.days?.[adminDateKey()]?.pageViews||0);
+  const lastOpened=stats.lastOpenedAt;
+
+  if(sitePageViews) sitePageViews.textContent=total.toLocaleString("th-TH");
+  if(siteTodayViews) siteTodayViews.textContent=today.toLocaleString("th-TH");
+  if(siteViewsTotalLarge) siteViewsTotalLarge.textContent=total.toLocaleString("th-TH");
+  if(siteViewsTodayLarge) siteViewsTodayLarge.textContent=today.toLocaleString("th-TH");
+  if(siteLastOpened){
+    siteLastOpened.textContent=typeof lastOpened==="number"
+      ? new Intl.DateTimeFormat("th-TH",{dateStyle:"medium",timeStyle:"short"}).format(new Date(lastOpened))
+      : "-";
+  }
 }
 
 function renderPickupControl() {
