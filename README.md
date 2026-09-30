@@ -72,3 +72,130 @@ QR ในโฟลเดอร์ qr เป็น placeholder ให้แทน
 - เพิ่มการป้องกันกดปุ่มยืนยันซ้ำเร็ว ๆ:
   ปุ่มจะถูก disable ระหว่างบันทึก Firebase
 - ยังคงใช้ push ID ของ Firebase ทำให้แต่ละรอบเป็น order คนละรายการ
+
+
+# V13 Best Complete
+
+สิ่งที่เพิ่มจากเวอร์ชันล่าสุด
+
+## 1. ระบบ Pickup Staff
+เปิด `pickup.html`
+
+สิทธิ์บัญชีที่เข้าได้:
+- role = `pickup`
+- role = `admin`
+
+ฟังก์ชัน:
+- ดูรายการที่ฝ่ายการเงินยืนยันแล้ว
+- ค้นหารหัสรับสินค้า
+- ค้นหารหัสนักเรียน
+- ค้นหาเบอร์โทร
+- ค้นหาเลขคำสั่งซื้อ
+- แยกนักเรียน / ครู
+- ยืนยันว่า “มอบสินค้าแล้ว”
+- บันทึกวันเวลาและชื่อบัญชีเจ้าหน้าที่
+- ย้อนสถานะกลับเป็นพร้อมรับได้กรณีกดผิด
+- นักเรียน/ครูจะเห็นสถานะ `รับสินค้าเรียบร้อยแล้ว` ใน Portal
+
+ตัวอย่างบัญชี:
+adminAccounts
+  pickup01
+    username: "pickup01"
+    passwordHash: "<SHA256>"
+    role: "pickup"
+
+## 2. Firebase Query เร็วขึ้น
+นักเรียนใช้ index `customer/studentId`
+ครูใช้ index `customer/phone`
+และมี fallback เดิมถ้า Rules ยังไม่อัปเดต
+
+Database Rules เพิ่ม index:
+- customer/studentId
+- customer/phone
+- payment/status
+- pickup/status
+
+## 3. Admin
+- เพิ่มจำนวนรายการ “รับสินค้าแล้ว”
+- รองรับข้อมูลครูในตาราง/รายละเอียดดีขึ้น
+- เพิ่มสถานะการรับสินค้าในตาราง
+- มีลิงก์ไป Finance และ Pickup
+
+## 4. Finance
+เพิ่มลิงก์ไป Pickup และ Admin
+
+## Workflow
+พรีออเดอร์
+→ รอฝ่ายการเงิน
+→ ฝ่ายการเงินยืนยัน
+→ pickup.status = ready
+→ เจ้าหน้าที่ Pickup มอบสินค้า
+→ pickup.status = picked_up
+→ Portal แสดง “รับสินค้าเรียบร้อยแล้ว”
+
+## สำคัญเรื่องความปลอดภัย
+ระบบปัจจุบันยังใช้ Realtime Database จาก browser โดยตรง และ Rules เดิมเปิด read/write กว้างเพื่อให้ระบบเดิมทำงานได้
+หากจะเปิดใช้งานกับข้อมูลจริงในวงกว้าง ควรย้าย Admin / Finance / Pickup ไปใช้ Firebase Authentication หรือ backend ก่อน เพื่อให้ Rules จำกัดสิทธิ์ตาม role ได้จริง
+
+
+# V14 — 3 Pages Workflow
+
+เว็บไซต์มี 3 หน้าเท่านั้น:
+1. `index.html` — นักเรียน/ครู พรีออเดอร์และดูสถานะ
+2. `finance.html` — ฝ่ายการเงินตรวจสลิปเท่านั้น
+3. `admin.html` — แอดมินดูแลทุกอย่าง รวมการเปิดรับสินค้าและยืนยันรับสินค้า
+
+## Workflow ใหม่
+พรีออเดอร์
+→ payment.status = pending
+→ ฝ่ายการเงินตรวจสลิป
+→ payment.status = verified
+→ **ยังไม่พร้อมรับสินค้า**
+→ รอจบพรีออเดอร์ / รอสินค้าพร้อม
+→ Admin กด “เปิดรับสินค้า / ซิงก์รายการ”
+→ verified orders เปลี่ยน pickup.status = ready
+→ ผู้สั่งเห็นรหัสรับสินค้า
+→ Admin เปิดรายละเอียดออเดอร์และกด “ยืนยันว่ารับแล้ว”
+→ pickup.status = picked_up
+
+## Finance
+ฝ่ายการเงิน:
+- เปิดดูสลิป
+- เทียบยอดกับบัญชี
+- บันทึกเลขอ้างอิง/หมายเหตุ
+- เลือก pending / verified / rejected
+- ทุกครั้งที่กดสถานะ จะมี Confirm Modal ให้ยืนยันอีกครั้ง
+- **Finance ไม่สามารถเปิดรับสินค้า และไม่สร้าง pickup code**
+
+## Admin
+หน้า Admin:
+- ดูยอดรวม / จำนวน / รายการทั้งหมด
+- แก้สถานะการเงินได้
+- เปิด/ปิดการรับสินค้าทั้งระบบ
+- ซิงก์ order ที่ verified ให้ ready
+- ตั้ง ready รายบุคคล
+- ยืนยัน received / picked_up รายบุคคล
+- ล็อกการรับสินค้า
+- ดูสลิปและข้อมูลทั้งหมด
+
+## System config
+เพิ่ม:
+systemConfig/
+  pickupOpen: false | true
+  pickupOpenedAt
+  pickupOpenedBy
+
+หาก `pickupOpen` ไม่มีค่า ระบบ index จะถือว่า **ยังไม่เปิดรับสินค้า**
+
+## สำคัญ
+ต้อง Publish `database.rules.preorder.json` เวอร์ชันนี้ใน Firebase Realtime Database Rules
+
+
+## V14.1 Hotfix
+แก้บั๊ก `ReferenceError: refreshPickupAvailability is not defined`
+สาเหตุคือฟังก์ชันถูกวางอยู่ภายใน callback ของ event `online` ทำให้ student login เรียกใช้จาก scope ภายนอกไม่ได้
+
+แก้แล้ว:
+- ย้าย `refreshPickupAvailability()` เป็น global module function
+- แยก online/offline event listener ออกจากฟังก์ชัน
+- เพิ่ม try/finally ตอน student login เพื่อให้ Loading Overlay ปิดเสมอ แม้เกิดข้อผิดพลาด

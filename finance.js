@@ -1,1 +1,387 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";import { firebaseConfig } from "./firebase-config.js";const app=initializeApp(firebaseConfig),db=getDatabase(app),$=id=>document.getElementById(id),SESSION="finance_session_v1";let user=null,orders=[],selected=null,unsub=null,currentView="pending";restore();$("financeLoginForm").onsubmit=async e=>{e.preventDefault();const u=norm($("financeUsername").value),p=$("financePassword").value;try{const s=await get(ref(db,`adminAccounts/${u}`));if(!s.exists())throw 0;const a=s.val(),h=await sha256(p);if(String(a.passwordHash||"").toLowerCase()!==h.toLowerCase())throw 0;if(!["finance","admin"].includes(a.role||"admin"))throw 0;user={username:u,role:a.role||"admin"};save();openApp()}catch{toast("ชื่อผู้ใช้ รหัสผ่าน หรือสิทธิ์ไม่ถูกต้อง")}};function save(){const d=JSON.stringify({...user,expiresAt:Date.now()+($("financeRemember").checked?7*86400000:12*3600000)});($("financeRemember").checked?localStorage:sessionStorage).setItem(SESSION,d)}function restore(){const r=localStorage.getItem(SESSION)||sessionStorage.getItem(SESSION);if(!r)return;try{const d=JSON.parse(r);if(Date.now()>d.expiresAt){clear();return}user=d;openApp()}catch{clear()}}function clear(){localStorage.removeItem(SESSION);sessionStorage.removeItem(SESSION);if(unsub)unsub()}function openApp(){$("financeLogin").classList.add("hidden");$("financeApp").classList.remove("hidden");subscribe()}$("financeLogout").onclick=()=>{clear();location.reload()};function subscribe(){if(unsub)unsub();unsub=onValue(ref(db,"preorders"),s=>{orders=Object.entries(s.val()||{}).map(([id,v])=>({id,...v})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));render()})}$("financeRefresh").onclick=render;["fSearch","fType","fStatus"].forEach(id=>{$(id).addEventListener("input",table);$(id).addEventListener("change",table)});document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>{document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));b.classList.add("active");currentView=b.dataset.view;table()});function render(){const p=orders.filter(o=>st(o)==="pending").length,v=orders.filter(o=>st(o)==="verified").length,r=orders.filter(o=>st(o)==="rejected").length;$("fPending").textContent=p;$("navPending").textContent=p;$("fVerified").textContent=v;$("fRejected").textContent=r;$("fTotal").textContent=money(orders.reduce((s,o)=>s+Number(o.order?.totalAmount||0),0));table()}function table(){const q=$("fSearch").value.trim().toLowerCase(),t=$("fType").value,s=$("fStatus").value;const list=orders.filter(o=>{if(currentView==="pending"&&st(o)!=="pending")return false;if(t&&o.buyerType!==t)return false;if(s&&st(o)!==s)return false;const c=o.customer||{};return!q||[o.referenceCode,name(o),c.studentId,c.phone,c.level].filter(Boolean).join(" ").toLowerCase().includes(q)});$("financeTable").innerHTML=list.map(o=>`<tr><td><strong>${esc(name(o))}</strong><br><small>${esc(o.referenceCode||"-")}</small></td><td>${o.buyerType==="teacher"?"ครู":"นักเรียน"}</td><td>${o.order?.quantity||0} ใบ</td><td>${money(o.order?.totalAmount)}</td><td>${badge(st(o))}</td><td>${date(o.createdAt)}</td><td><button class="view-btn" data-open="${o.id}">ตรวจสอบ</button></td></tr>`).join("");document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openModal(b.dataset.open))}function openModal(id){const o=orders.find(x=>x.id===id);if(!o)return;selected=o;const c=o.customer||{};$("fmName").textContent=name(o);$("fmAmount").textContent=money(o.order?.totalAmount);$("fmRef").textContent=o.referenceCode||"-";$("fmType").textContent=o.buyerType==="teacher"?"ครู":"นักเรียน";$("fmStudent").textContent=c.studentId||"-";$("fmClass").textContent=c.level?`${c.level} / ห้อง ${c.room||"-"}`:"-";$("fmPhone").textContent=c.phone||"-";$("fmQty").textContent=`${o.order?.quantity||0} ใบ`;$("fmDate").textContent=date(o.createdAt);$("fmStatus").textContent=label(st(o));$("fmSlip").src=o.payment?.slipData||"";$("fmBankRef").value=o.payment?.bankReference||"";$("fmNote").value=o.payment?.financeNote||"";$("financeModal").classList.remove("hidden")}document.querySelectorAll("[data-close-finance]").forEach(x=>x.onclick=()=>$("financeModal").classList.add("hidden"));document.querySelectorAll("[data-finance-status]").forEach(b=>b.onclick=async()=>{if(!selected)return;const s=b.dataset.financeStatus,patch={"payment/status":s,"payment/reviewedAt":Date.now(),"payment/reviewedBy":user?.username||"finance","payment/bankReference":$("fmBankRef").value.trim(),"payment/financeNote":$("fmNote").value.trim(),status:s==="verified"?"payment_verified":s==="rejected"?"payment_issue":"pending_review"};if(selected.buyerType==="student" || selected.buyerType==="teacher"){if(s==="verified"){patch["pickup/status"]="ready";patch["pickup/code"]=selected.pickup?.code||pickupCode(selected)}else{patch["pickup/status"]="locked";patch["pickup/code"]=null}}try{await update(ref(db,`preorders/${selected.id}`),patch);$("financeModal").classList.add("hidden");toast(s==="verified"?"ยืนยันยอดแล้ว":"อัปเดตสถานะแล้ว")}catch(e){console.error(e);toast("อัปเดตไม่สำเร็จ")}});function pickupCode(o){return`PK-${String(o.referenceCode||o.id).replace(/[^A-Za-z0-9]/g,"").slice(-6).toUpperCase()}`}function st(o){return o.payment?.status||"pending"}function label(s){return({pending:"รอตรวจสอบ",verified:"ผ่านแล้ว",rejected:"มีปัญหา"})[s]||s}function badge(s){return`<span class="pill ${s}">${label(s)}</span>`}function name(o){const c=o.customer||{};return`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim()}function money(v){return`฿${Number(v||0).toLocaleString("th-TH")}`}function date(v){return typeof v==="number"?new Intl.DateTimeFormat("th-TH",{dateStyle:"medium",timeStyle:"short"}).format(new Date(v)):"-"}function norm(v){return String(v||"").trim().toLowerCase().replace(/[.#$\[\]\/]/g,"")}async function sha256(t){const d=new TextEncoder().encode(t),h=await crypto.subtle.digest("SHA-256",d);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,"0")).join("")}function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}function toast(m){$("financeToast").innerHTML=`<div class="toast">${esc(m)}</div>`;setTimeout(()=>$("financeToast").innerHTML="",3200)}
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const $ = (id) => document.getElementById(id);
+
+const SESSION = "finance_session_v2";
+let user = null;
+let orders = [];
+let selected = null;
+let unsubscribe = null;
+let currentView = "pending";
+let pendingStatus = null;
+
+restoreSession();
+
+$("financeLoginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const username = normalizeUsername($("financeUsername").value);
+  const password = $("financePassword").value;
+
+  try {
+    const snap = await get(ref(db, `adminAccounts/${username}`));
+    if (!snap.exists()) throw new Error("INVALID");
+
+    const account = snap.val();
+    const hash = await sha256(password);
+
+    if (String(account.passwordHash || "").toLowerCase() !== hash.toLowerCase()) {
+      throw new Error("INVALID");
+    }
+
+    if (!["finance", "admin"].includes(account.role || "admin")) {
+      throw new Error("ROLE");
+    }
+
+    user = { username, role: account.role || "admin" };
+    saveSession();
+    openApp();
+  } catch (error) {
+    toast(error?.message === "ROLE"
+      ? "บัญชีนี้ไม่มีสิทธิ์ฝ่ายการเงิน"
+      : "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+  }
+});
+
+function saveSession() {
+  const remember = $("financeRemember").checked;
+  const data = JSON.stringify({
+    ...user,
+    expiresAt: Date.now() + (remember ? 7 * 86400000 : 12 * 3600000)
+  });
+
+  if (remember) {
+    localStorage.setItem(SESSION, data);
+    sessionStorage.removeItem(SESSION);
+  } else {
+    sessionStorage.setItem(SESSION, data);
+    localStorage.removeItem(SESSION);
+  }
+}
+
+function restoreSession() {
+  const raw = localStorage.getItem(SESSION) || sessionStorage.getItem(SESSION);
+  if (!raw) return;
+
+  try {
+    const data = JSON.parse(raw);
+    if (!data.expiresAt || Date.now() > data.expiresAt) {
+      clearSession();
+      return;
+    }
+
+    user = data;
+    openApp();
+  } catch {
+    clearSession();
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION);
+  sessionStorage.removeItem(SESSION);
+  if (unsubscribe) {
+    unsubscribe();
+    unsubscribe = null;
+  }
+}
+
+function openApp() {
+  $("financeLogin").classList.add("hidden");
+  $("financeApp").classList.remove("hidden");
+  subscribeOrders();
+}
+
+$("financeLogout").addEventListener("click", () => {
+  clearSession();
+  location.reload();
+});
+
+function subscribeOrders() {
+  if (unsubscribe) unsubscribe();
+
+  unsubscribe = onValue(ref(db, "preorders"), (snap) => {
+    orders = Object.entries(snap.val() || {})
+      .map(([id, value]) => ({ id, ...value }))
+      .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+
+    render();
+  });
+}
+
+$("financeRefresh").addEventListener("click", render);
+
+["fSearch", "fType", "fStatus"].forEach((id) => {
+  $(id).addEventListener("input", renderTable);
+  $(id).addEventListener("change", renderTable);
+});
+
+document.querySelectorAll(".nav").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".nav").forEach((item) => item.classList.remove("active"));
+    button.classList.add("active");
+    currentView = button.dataset.view;
+    renderTable();
+  });
+});
+
+function render() {
+  const pending = orders.filter((o) => paymentStatus(o) === "pending").length;
+  const verified = orders.filter((o) => paymentStatus(o) === "verified").length;
+  const rejected = orders.filter((o) => paymentStatus(o) === "rejected").length;
+
+  $("fPending").textContent = pending;
+  $("navPending").textContent = pending;
+  $("fVerified").textContent = verified;
+  $("fRejected").textContent = rejected;
+  $("fTotal").textContent = money(
+    orders.reduce((sum, order) => sum + Number(order.order?.totalAmount || 0), 0)
+  );
+
+  renderTable();
+}
+
+function renderTable() {
+  const q = $("fSearch").value.trim().toLowerCase();
+  const type = $("fType").value;
+  const status = $("fStatus").value;
+
+  const list = orders.filter((order) => {
+    if (currentView === "pending" && paymentStatus(order) !== "pending") return false;
+    if (type && order.buyerType !== type) return false;
+    if (status && paymentStatus(order) !== status) return false;
+
+    const customer = order.customer || {};
+
+    return !q || [
+      order.referenceCode,
+      fullName(order),
+      customer.studentId,
+      customer.phone,
+      customer.level
+    ].filter(Boolean).join(" ").toLowerCase().includes(q);
+  });
+
+  $("financeTable").innerHTML = list.map((order) => `
+    <tr>
+      <td><strong>${escapeHTML(fullName(order))}</strong><br><small>${escapeHTML(order.referenceCode || "-")}</small></td>
+      <td>${order.buyerType === "teacher" ? "ครู" : "นักเรียน"}</td>
+      <td>${Number(order.order?.quantity || 0)} ใบ</td>
+      <td>${money(order.order?.totalAmount)}</td>
+      <td>${statusBadge(paymentStatus(order))}</td>
+      <td>${formatDate(order.createdAt)}</td>
+      <td><button class="view-btn" data-open="${order.id}">ตรวจสอบ</button></td>
+    </tr>
+  `).join("");
+
+  document.querySelectorAll("[data-open]").forEach((button) => {
+    button.addEventListener("click", () => openOrder(button.dataset.open));
+  });
+}
+
+function openOrder(id) {
+  const order = orders.find((item) => item.id === id);
+  if (!order) return;
+
+  selected = order;
+  const customer = order.customer || {};
+
+  $("fmName").textContent = fullName(order);
+  $("fmAmount").textContent = money(order.order?.totalAmount);
+  $("fmRef").textContent = order.referenceCode || "-";
+  $("fmType").textContent = order.buyerType === "teacher" ? "ครู" : "นักเรียน";
+  $("fmStudent").textContent = customer.studentId || "-";
+  $("fmClass").textContent = customer.level
+    ? `${customer.level} / ห้อง ${customer.room || "-"}`
+    : "ครู";
+  $("fmPhone").textContent = customer.phone || "-";
+  $("fmQty").textContent = `${Number(order.order?.quantity || 0)} ใบ`;
+  $("fmDate").textContent = formatDate(order.createdAt);
+  $("fmStatus").textContent = statusLabel(paymentStatus(order));
+  $("fmSlip").src = order.payment?.slipData || "";
+  $("fmBankRef").value = order.payment?.bankReference || "";
+  $("fmNote").value = order.payment?.financeNote || "";
+
+  $("financeModal").classList.remove("hidden");
+}
+
+document.querySelectorAll("[data-close-finance]").forEach((el) => {
+  el.addEventListener("click", () => $("financeModal").classList.add("hidden"));
+});
+
+/* กดเลือกสถานะ -> ยังไม่บันทึกทันที แต่เปิดหน้าต่างยืนยันก่อน */
+document.querySelectorAll("[data-finance-status]").forEach((button) => {
+  button.addEventListener("click", () => {
+    if (!selected) return;
+
+    pendingStatus = button.dataset.financeStatus;
+    openStatusConfirmation(pendingStatus);
+  });
+});
+
+function openStatusConfirmation(status) {
+  const labels = {
+    pending: {
+      title: "ยืนยันให้กลับเป็นรอตรวจสอบ?",
+      text: "รายการนี้จะกลับไปอยู่ในคิวรอฝ่ายการเงินตรวจสอบ",
+      icon: "⌛"
+    },
+    verified: {
+      title: "ยืนยันว่าการชำระเงินถูกต้อง?",
+      text: "ระบบจะบันทึกว่าเงินเข้าถูกต้องแล้ว แต่จะยังไม่เปิดให้รับสินค้า จนกว่าแอดมินจะเปิดการรับสินค้า",
+      icon: "✓"
+    },
+    rejected: {
+      title: "ยืนยันว่าการชำระเงินมีปัญหา?",
+      text: "ผู้สั่งซื้อจะเห็นสถานะว่าการชำระเงินมีปัญหา พร้อมหมายเหตุของฝ่ายการเงิน",
+      icon: "!"
+    }
+  };
+
+  const info = labels[status];
+
+  $("confirmStatusIcon").textContent = info.icon;
+  $("confirmStatusTitle").textContent = info.title;
+  $("confirmStatusText").textContent = info.text;
+  $("confirmOrderName").textContent = fullName(selected);
+  $("confirmOrderAmount").textContent = money(selected.order?.totalAmount);
+
+  const confirmButton = $("confirmFinanceStatus");
+  confirmButton.className = status === "verified"
+    ? "confirm-verified"
+    : status === "rejected"
+      ? "confirm-rejected"
+      : "confirm-pending";
+  confirmButton.textContent = status === "verified"
+    ? "ยืนยันยอดถูกต้อง"
+    : status === "rejected"
+      ? "ยืนยันว่ามีปัญหา"
+      : "ยืนยันรอตรวจสอบ";
+
+  $("financeConfirmModal").classList.remove("hidden");
+}
+
+function closeStatusConfirmation() {
+  pendingStatus = null;
+  $("financeConfirmModal").classList.add("hidden");
+}
+
+$("cancelFinanceStatus").addEventListener("click", closeStatusConfirmation);
+document.querySelectorAll("[data-close-confirm]").forEach((el) => {
+  el.addEventListener("click", closeStatusConfirmation);
+});
+
+$("confirmFinanceStatus").addEventListener("click", async () => {
+  if (!selected || !pendingStatus) return;
+
+  const status = pendingStatus;
+  const button = $("confirmFinanceStatus");
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "กำลังบันทึก...";
+
+  /* ฝ่ายการเงินแก้เฉพาะสถานะการเงินเท่านั้น
+     ไม่แตะ pickup/status และไม่สร้าง pickup code */
+  const patch = {
+    "payment/status": status,
+    "payment/reviewedAt": Date.now(),
+    "payment/reviewedBy": user?.username || "finance",
+    "payment/bankReference": $("fmBankRef").value.trim(),
+    "payment/financeNote": $("fmNote").value.trim(),
+    status: status === "verified"
+      ? "payment_verified"
+      : status === "rejected"
+        ? "payment_issue"
+        : "pending_review"
+  };
+
+  try {
+    await update(ref(db, `preorders/${selected.id}`), patch);
+
+    closeStatusConfirmation();
+    $("financeModal").classList.add("hidden");
+
+    toast(
+      status === "verified"
+        ? "ยืนยันการชำระเงินแล้ว · รอแอดมินเปิดรับสินค้า"
+        : "อัปเดตสถานะการเงินแล้ว"
+    );
+  } catch (error) {
+    console.error(error);
+    toast("อัปเดตสถานะไม่สำเร็จ");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+});
+
+function paymentStatus(order) {
+  return order.payment?.status || "pending";
+}
+
+function statusLabel(status) {
+  return {
+    pending: "รอตรวจสอบ",
+    verified: "ผ่านแล้ว",
+    rejected: "มีปัญหา"
+  }[status] || status;
+}
+
+function statusBadge(status) {
+  return `<span class="pill ${status}">${statusLabel(status)}</span>`;
+}
+
+function fullName(order) {
+  const c = order.customer || {};
+  return `${c.prefix || ""}${c.firstName || ""} ${c.lastName || ""}`.trim() || "-";
+}
+
+function money(value) {
+  return `฿${Number(value || 0).toLocaleString("th-TH")}`;
+}
+
+function formatDate(value) {
+  if (typeof value !== "number") return "-";
+
+  return new Intl.DateTimeFormat("th-TH", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
+}
+
+function normalizeUsername(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[.#$\[\]\/]/g, "");
+}
+
+async function sha256(text) {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+
+  return [...new Uint8Array(hash)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function escapeHTML(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function toast(message) {
+  $("financeToast").innerHTML = `<div class="toast">${escapeHTML(message)}</div>`;
+  setTimeout(() => {
+    $("financeToast").innerHTML = "";
+  }, 3400);
+}

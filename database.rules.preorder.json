@@ -7,7 +7,10 @@
     "preorders": {
       ".read": true,
       ".indexOn": [
-        "customer/studentId"
+        "customer/studentId",
+        "customer/phone",
+        "payment/status",
+        "pickup/status"
       ],
       "$orderId": {
         ".write": true,
@@ -54,6 +57,10 @@
       }
     },
     "siteStats": {
+      ".read": true,
+      ".write": true
+    },
+    "systemConfig": {
       ".read": true,
       ".write": true
     }

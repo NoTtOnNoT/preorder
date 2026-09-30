@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#166534">
+  <title>Pickup · Say No Plastic</title>
+  <link rel="icon" href="./favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./pickup.css">
+</head>
+<body>
+  <section id="pickupLogin" class="login-screen">
+    <form id="pickupLoginForm" class="login-card">
+      <img src="./img/sckc.png" onerror="this.onerror=null;this.src='./img/sckc.svg'" alt="ตราสภานักเรียน">
+      <span>PICKUP STAFF</span>
+      <h1>ระบบรับกระเป๋า</h1>
+      <p>สำหรับเจ้าหน้าที่จ่ายสินค้า</p>
+
+      <input id="pickupUsername" placeholder="Username" autocomplete="username" required>
+      <input id="pickupPassword" type="password" placeholder="Password" autocomplete="current-password" required>
+
+      <label class="remember">
+        <input id="pickupRemember" type="checkbox" checked>
+        จำการเข้าสู่ระบบ 7 วัน
+      </label>
+
+      <button type="submit">เข้าสู่ระบบ</button>
+
+      <div class="staff-links">
+        <a href="./index.html">หน้าเว็บหลัก</a>
+        <a href="./finance.html">ฝ่ายการเงิน</a>
+        <a href="./admin.html">Admin</a>
+      </div>
+    </form>
+  </section>
+
+  <div id="pickupApp" class="app hidden">
+    <aside class="sidebar">
+      <img src="./img/sckc.png" onerror="this.onerror=null;this.src='./img/sckc.svg'" alt="">
+      <span>PICKUP STAFF</span>
+      <h2>จ่ายกระเป๋า</h2>
+
+      <button class="nav active" data-filter="ready">
+        พร้อมรับ
+        <b id="readyNavCount">0</b>
+      </button>
+
+      <button class="nav" data-filter="picked_up">
+        รับแล้ว
+        <b id="pickedNavCount">0</b>
+      </button>
+
+      <button class="nav" data-filter="all">ทั้งหมด</button>
+
+      <a href="./finance.html" class="side-link">ฝ่ายการเงิน</a>
+      <a href="./admin.html" class="side-link">Admin</a>
+      <button id="pickupLogout" class="logout">ออกจากระบบ</button>
+    </aside>
+
+    <main>
+      <header class="page-header">
+        <div>
+          <span>PICKUP DASHBOARD</span>
+          <h1>การรับกระเป๋า</h1>
+          <p>ค้นหาด้วยรหัสรับสินค้า รหัสนักเรียน เบอร์โทร หรือเลขคำสั่งซื้อ</p>
+        </div>
+        <button id="pickupRefresh" class="refresh">↻ รีเฟรช</button>
+      </header>
+
+      <section class="stats">
+        <article>
+          <span>พร้อมรับ</span>
+          <strong id="readyCount">0</strong>
+        </article>
+        <article>
+          <span>รับแล้ว</span>
+          <strong id="pickedCount">0</strong>
+        </article>
+        <article>
+          <span>กระเป๋ารอจ่าย</span>
+          <strong id="readyBags">0</strong>
+        </article>
+        <article>
+          <span>จ่ายวันนี้</span>
+          <strong id="todayPicked">0</strong>
+        </article>
+      </section>
+
+      <section class="search-card">
+        <div class="search-input">
+          <span>⌕</span>
+          <input id="pickupSearch" placeholder="เช่น PK-ABC123, 27653, 0812345678 หรือ ST...">
+        </div>
+        <select id="pickupTypeFilter">
+          <option value="">นักเรียน + ครู</option>
+          <option value="student">นักเรียน</option>
+          <option value="teacher">ครู</option>
+        </select>
+      </section>
+
+      <section class="orders-panel">
+        <div class="panel-head">
+          <div>
+            <span>ORDERS</span>
+            <h2 id="pickupListTitle">รายการพร้อมรับ</h2>
+          </div>
+          <strong id="resultCount">0 รายการ</strong>
+        </div>
+
+        <div id="pickupOrderCards" class="order-grid"></div>
+
+        <div id="pickupEmpty" class="empty hidden">
+          <div>◇</div>
+          <strong>ไม่พบรายการ</strong>
+          <span>ลองค้นหาด้วยรหัสรับสินค้า รหัสนักเรียน หรือเบอร์โทร</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="pickupModal" class="modal hidden">
+    <div class="backdrop" data-close-pickup></div>
+
+    <section class="modal-card">
+      <button class="close" data-close-pickup>×</button>
+
+      <div class="modal-heading">
+        <span>PICKUP CONFIRMATION</span>
+        <h2 id="pmName">-</h2>
+        <p id="pmType">-</p>
+      </div>
+
+      <div id="pmStatusBanner" class="status-banner ready">
+        พร้อมรับสินค้า
+      </div>
+
+      <div class="detail-grid">
+        <div><span>รหัสรับสินค้า</span><strong id="pmPickupCode">-</strong></div>
+        <div><span>เลขคำสั่งซื้อ</span><strong id="pmOrderRef">-</strong></div>
+        <div><span>รหัสนักเรียน</span><strong id="pmStudentId">-</strong></div>
+        <div><span>ชั้น / ห้อง</span><strong id="pmClass">-</strong></div>
+        <div><span>เบอร์โทร</span><strong id="pmPhone">-</strong></div>
+        <div><span>จำนวนกระเป๋า</span><strong id="pmQty">-</strong></div>
+        <div><span>ยอดชำระ</span><strong id="pmAmount">-</strong></div>
+        <div><span>สถานะการเงิน</span><strong id="pmPayment">-</strong></div>
+      </div>
+
+      <div id="pickedInfo" class="picked-info hidden">
+        <span>รับสินค้าเมื่อ</span>
+        <strong id="pmPickedAt">-</strong>
+        <small id="pmPickedBy">-</small>
+      </div>
+
+      <label class="staff-note">
+        หมายเหตุการรับสินค้า
+        <textarea id="pmNote" rows="2" placeholder="ไม่บังคับ เช่น รับแทนโดย..."></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button id="restoreReadyBtn" class="secondary hidden" type="button">ย้อนกลับเป็นพร้อมรับ</button>
+        <button id="confirmPickupBtn" class="confirm" type="button">✓ ยืนยันว่ามอบสินค้าแล้ว</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="pickupToast"></div>
+  <script type="module" src="./pickup.js"></script>
+</body>
+</html>

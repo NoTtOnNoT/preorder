@@ -13,6 +13,9 @@
 </head>
 <body>
   <div class="ambient"><i></i><i></i><i></i></div>
+  <div id="networkBanner" class="network-banner hidden">
+    <span>●</span> ไม่มีการเชื่อมต่ออินเทอร์เน็ต ระบบจะยังไม่ส่งข้อมูลจนกว่าจะออนไลน์อีกครั้ง
+  </div>
 
   <!-- LANDING -->
   <section id="landing" class="landing">
@@ -73,6 +76,11 @@
           <div><strong>พรีออเดอร์สำหรับครู</strong><span>กรอกข้อมูลแบบทีละขั้นตอน</span></div>
           <b>→</b>
         </button>
+              <div class="landing-staff-links">
+          <a href="./finance.html">ฝ่ายการเงิน</a>
+          <span>·</span>
+          <a href="./admin.html">Admin</a>
+        </div>
       </section>
     </div>
   </section>
@@ -85,6 +93,11 @@
     </header>
     <div class="hub-shell">
       <div class="hub-head"><span class="eyebrow">STUDENT COUNCIL</span><h2>สวัสดี <span id="hubStudentId">-</span></h2><p id="hubStudentType">-</p></div>
+      <div class="portal-stats">
+        <div><span>คำสั่งซื้อ</span><strong id="studentStatTotal">0</strong></div>
+        <div><span>รอตรวจสอบ</span><strong id="studentStatPending">0</strong></div>
+        <div><span>พร้อมรับ</span><strong id="studentStatReady">0</strong></div>
+      </div>
       <div class="function-grid">
         <button id="studentPreorderCard" class="function-card preorder" type="button">
           <div class="function-icon">👜</div><div class="function-content"><span>FUNCTION 01</span><h3>พรีออเดอร์กระเป๋า</h3><p>กรอกข้อมูล เลือกจำนวน ชำระเงิน และแนบสลิป</p><div id="preorderStatusBadge" class="status-pill neutral">ยังไม่มีคำสั่งซื้อ</div></div><b>→</b>
@@ -120,6 +133,7 @@
           <div class="step-dot" data-sp="4"><b>4</b><span>ชำระเงิน</span></div>
           <div class="step-dot" data-sp="5"><b>5</b><span>ยืนยัน</span></div>
         </div>
+        <div id="studentProgressText" class="progress-text">ขั้นตอน 1 จาก 5 · ข้อมูลผู้สั่งซื้อ</div>
         <form id="studentOrderForm">
           <section class="student-step active form-page" data-ss="1">
             <div class="page-inner">
@@ -217,6 +231,12 @@
         <span class="eyebrow">TEACHER PORTAL</span>
         <h2>สำหรับคุณครู</h2>
         <p>กรอกเบอร์โทรศัพท์เพื่อค้นหาคำสั่งซื้อเดิม หรือเริ่มพรีออเดอร์ใหม่</p>
+      </div>
+
+      <div class="portal-stats teacher-stats">
+        <div><span>คำสั่งซื้อ</span><strong id="teacherStatTotal">0</strong></div>
+        <div><span>รอตรวจสอบ</span><strong id="teacherStatPending">0</strong></div>
+        <div><span>พร้อมรับ</span><strong id="teacherStatReady">0</strong></div>
       </div>
 
       <div class="teacher-lookup-card">
@@ -331,6 +351,7 @@
           <div class="step-dot" data-tp="2"><b>2</b><span>เลือกจำนวน</span></div>
           <div class="step-dot" data-tp="3"><b>3</b><span>ชำระเงิน</span></div>
         </div>
+        <div id="teacherProgressText" class="progress-text">ขั้นตอน 1 จาก 3 · ข้อมูลครู</div>
         <form id="teacherForm">
           <section class="teacher-step active form-page" data-ts="1">
             <div class="page-inner">
@@ -433,6 +454,45 @@
     </aside>
     <div id="teacherDrawerBackdrop" class="drawer-backdrop hidden"></div>
   </section>
+
+
+  <div id="duplicateOrderModal" class="modal hidden">
+    <div class="modal-bg" data-close-duplicate></div>
+    <div class="decision-card">
+      <div class="decision-icon">!</div>
+      <span>ตรวจพบคำสั่งซื้อเดิม</span>
+      <h2>มีรายการที่ยังดำเนินการไม่เสร็จ</h2>
+      <p id="duplicateOrderText">คุณมีคำสั่งซื้อที่กำลังรอตรวจสอบอยู่ ต้องการพรีออเดอร์เพิ่มหรือไม่?</p>
+      <div class="decision-actions">
+        <button id="viewExistingOrdersBtn" class="secondary" type="button">ดูคำสั่งซื้อเดิม</button>
+        <button id="continueNewOrderBtn" class="primary" type="button">พรีออเดอร์เพิ่ม</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="orderDetailModal" class="modal hidden">
+    <div class="modal-bg" data-close-order-detail></div>
+    <div class="order-detail-card">
+      <button id="closeOrderDetail" class="modal-close" type="button">×</button>
+      <div class="order-detail-head">
+        <div><span>ORDER DETAIL</span><h2 id="detailOrderRef">-</h2></div>
+        <span id="detailOrderStatus" class="status-pill neutral">-</span>
+      </div>
+      <div class="order-detail-grid">
+        <div><span>ผู้สั่งซื้อ</span><strong id="detailOrderName">-</strong></div>
+        <div><span>จำนวน</span><strong id="detailOrderQty">-</strong></div>
+        <div><span>ยอดชำระ</span><strong id="detailOrderTotal">-</strong></div>
+        <div><span>วันที่สั่ง</span><strong id="detailOrderDate">-</strong></div>
+        <div><span>สถานะการเงิน</span><strong id="detailFinanceStatus">-</strong></div>
+        <div><span>สถานะการรับ</span><strong id="detailPickupStatus">-</strong></div>
+      </div>
+      <div id="detailPickupCodeWrap" class="detail-pickup-code hidden"><span>รหัสรับสินค้า</span><strong id="detailPickupCode">-</strong></div>
+    </div>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-card"><div class="spinner"></div><strong id="loadingText">กำลังโหลดข้อมูล...</strong></div>
+  </div>
 
   <div id="successModal" class="modal hidden"><div class="modal-bg"></div><div class="success-card"><div class="success-check">✓</div><span>COMPLETE</span><h2>บันทึกสำเร็จ</h2><p id="successText">ระบบได้รับคำสั่งซื้อแล้ว</p><div class="ref-box"><small>หมายเลขอ้างอิง</small><strong id="successRef">-</strong></div><button id="successClose" class="primary wide">กลับหน้าหลัก</button></div></div>
   <div id="toastContainer"></div>

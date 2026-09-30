@@ -63,3 +63,111 @@ tbody tr:hover{
   .stats article{min-height:88px;padding:12px}
   .stats strong{font-size:21px}
 }
+
+.staff-link{
+  min-height:43px;
+  display:flex;
+  align-items:center;
+  padding:0 12px;
+  border-radius:11px;
+  background:#f6f2f8;
+  color:#5b21b6;
+  text-decoration:none;
+  font-size:9px;
+}
+.staff-link:hover{background:#efe8ff}
+.pickup-link{background:#f0fdf4;color:#15803d}
+.pickup-link:hover{background:#dcfce7}
+.pickup-status{
+  display:inline-flex;
+  padding:5px 8px;
+  border-radius:999px;
+  font-size:8px;
+}
+.pickup-status.locked{background:#f4f1f6;color:#786f80}
+.pickup-status.ready{background:#eff6ff;color:#1d4ed8}
+.pickup-status.picked_up{background:#f0fdf4;color:#15803d}
+
+.pickup-control-panel{
+  margin-bottom:15px;
+  padding:19px;
+  display:grid;
+  grid-template-columns:1.4fr .8fr auto;
+  gap:14px;
+  align-items:center;
+  border-radius:18px;
+  background:linear-gradient(135deg,#fff,#faf8ff 60%,#f4fff7);
+  border:1px solid #ebe4ef;
+  box-shadow:0 12px 35px rgba(59,7,100,.06);
+}
+.pickup-control-info>span{
+  color:#7c3aed;
+  font-size:7px;
+  font-weight:700;
+  letter-spacing:.12em;
+}
+.pickup-control-info h2{margin:2px 0 3px;font-size:18px}
+.pickup-control-info p{margin:0;color:#786f80;font-size:8px;line-height:1.6}
+.pickup-control-state{
+  padding:11px;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid #eee8f1;
+}
+.pickup-control-state small,.pickup-control-state strong,.pickup-control-state span{display:block}
+.pickup-control-state small{font-size:7px;color:#786f80}
+.pickup-control-state strong{margin:2px 0;font-size:11px}
+.pickup-control-state strong.open{color:#15803d}
+.pickup-control-state strong.closed{color:#b45309}
+.pickup-control-state span{font-size:7px;color:#786f80}
+.pickup-control-actions{display:grid;gap:7px}
+.pickup-control-actions button{
+  min-height:39px;
+  padding:0 11px;
+  border:0;
+  border-radius:9px;
+  font-size:8px;
+  font-weight:600;
+}
+.pickup-open-btn{background:#dcfce7;color:#15803d}
+.pickup-close-btn{background:#fff1f2;color:#be123c}
+.admin-section-label{
+  margin:16px 0 7px;
+  color:#7c3aed;
+  font-size:8px;
+  font-weight:700;
+}
+.pickup-detail-status{
+  padding:10px;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:8px;
+  align-items:center;
+  border-radius:10px;
+  background:#faf8fc;
+}
+.pickup-detail-status span{font-size:8px;color:#786f80}
+.pickup-detail-status strong{font-size:9px}
+.pickup-detail-status small{font-size:8px;color:#5b21b6}
+.pickup-admin-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:7px;
+  margin-top:8px;
+}
+.pickup-admin-actions button{
+  min-height:38px;
+  border:0;
+  border-radius:9px;
+  font-size:8px;
+  font-weight:600;
+}
+#setReadyBtn{background:#eff6ff;color:#1d4ed8}
+#markPickedUpBtn{background:#dcfce7;color:#15803d}
+#lockPickupBtn{background:#f3f1f5;color:#675d6c}
+@media(max-width:900px){
+  .pickup-control-panel{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .pickup-admin-actions{grid-template-columns:1fr}
+}

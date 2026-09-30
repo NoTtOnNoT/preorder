@@ -11,7 +11,7 @@
 <body>
   <section id="loginScreen" class="login-screen">
     <div class="login-card">
-      <img src="./img/sckc.svg" class="admin-logo" alt="">
+      <img src="./img/sckc.png" onerror="this.onerror=null;this.src='./img/sckc.svg'" class="admin-logo" alt="">
       <span>PRE-ORDER ADMIN</span>
       <h1>ระบบจัดการพรีออเดอร์</h1>
       <form id="loginForm">
@@ -25,10 +25,12 @@
 
   <div id="adminApp" class="admin-layout hidden">
     <aside class="admin-side">
-      <img src="./img/sckc.svg" alt="">
+      <img src="./img/sckc.png" onerror="this.onerror=null;this.src='./img/sckc.svg'" alt="">
       <h2>Pre-order Admin</h2>
       <button class="nav active" data-view="dashboard">ภาพรวม</button>
       <button class="nav" data-view="orders">คำสั่งซื้อทั้งหมด</button>
+      <a href="./finance.html" class="staff-link">ฝ่ายการเงิน</a>
+      
       <button id="logoutBtn" class="logout">ออกจากระบบ</button>
     </aside>
 
@@ -46,7 +48,28 @@
           <article><span>รอตรวจสอบ</span><strong id="pendingCount">0</strong></article>
           <article><span>ยืนยันแล้ว</span><strong id="verifiedCount">0</strong></article>
           <article><span>สั่งวันนี้</span><strong id="todayCount">0</strong></article>
+          <article><span>รับสินค้าแล้ว</span><strong id="pickedUpCount">0</strong></article>
         </div>
+
+
+        <section class="pickup-control-panel">
+          <div class="pickup-control-info">
+            <span>PICKUP CONTROL</span>
+            <h2>การเปิดรับกระเป๋า</h2>
+            <p>ฝ่ายการเงินมีหน้าที่ตรวจสอบเงินเท่านั้น สินค้าจะยังไม่พร้อมรับจนกว่าแอดมินจะเปิดระบบนี้หลังจบช่วงพรีออเดอร์</p>
+          </div>
+
+          <div class="pickup-control-state">
+            <small>สถานะปัจจุบัน</small>
+            <strong id="globalPickupStatus" class="closed">ยังไม่เปิดรับสินค้า</strong>
+            <span id="globalPickupMeta">รอแอดมินเปิดหลังสินค้าพร้อม</span>
+          </div>
+
+          <div class="pickup-control-actions">
+            <button id="openPickupBtn" class="pickup-open-btn" type="button">เปิดรับสินค้า / ซิงก์รายการ</button>
+            <button id="closePickupBtn" class="pickup-close-btn" type="button">ปิดการรับสินค้า</button>
+          </div>
+        </section>
 
         <div class="panel">
           <h2>คำสั่งซื้อล่าสุด</h2>
@@ -74,7 +97,7 @@
           <div class="table-scroll">
             <table>
               <thead>
-                <tr><th>ผู้สั่งซื้อ</th><th>ชั้น</th><th>จำนวน</th><th>ยอด</th><th>สถานะ</th><th>วันที่</th><th></th></tr>
+                <tr><th>ผู้สั่งซื้อ</th><th>ประเภท</th><th>ชั้น</th><th>จำนวน</th><th>ยอด</th><th>การเงิน</th><th>การรับ</th><th>วันที่</th><th></th></tr>
               </thead>
               <tbody id="orderTableBody"></tbody>
             </table>
@@ -102,10 +125,23 @@
 
       <img id="dSlip" class="admin-slip" alt="สลิป">
 
+      <div class="admin-section-label">สถานะการเงิน</div>
       <div class="status-actions">
         <button data-status="pending">รอตรวจสอบ</button>
         <button data-status="verified">ยืนยันแล้ว</button>
         <button data-status="rejected">มีปัญหา</button>
+      </div>
+
+      <div class="admin-section-label">การรับสินค้า</div>
+      <div class="pickup-detail-status">
+        <span>สถานะ</span>
+        <strong id="dPickupStatus">-</strong>
+        <small id="dPickupCode">-</small>
+      </div>
+      <div class="pickup-admin-actions">
+        <button id="setReadyBtn" type="button">พร้อมรับ</button>
+        <button id="markPickedUpBtn" type="button">ยืนยันว่ารับแล้ว</button>
+        <button id="lockPickupBtn" type="button">ล็อกการรับ</button>
       </div>
     </div>
   </div>

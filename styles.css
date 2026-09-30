@@ -1304,3 +1304,29 @@ label select{
 .brand-group .eyebrow {
   margin-top: 0;
 }
+
+/* =========================================================
+   V12 BEST — UX / dashboard / resilience
+   ========================================================= */
+.network-banner{position:fixed;z-index:120;left:50%;top:10px;transform:translateX(-50%);width:min(760px,calc(100% - 24px));padding:10px 14px;border-radius:12px;background:#7f1d1d;color:#fff;text-align:center;font-size:9px;box-shadow:0 12px 32px rgba(127,29,29,.22)}
+.network-banner span{margin-right:6px;color:#fecaca}.portal-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:0 auto 15px;max-width:680px}.portal-stats>div{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.98);box-shadow:0 8px 24px rgba(59,7,100,.05);text-align:center}.portal-stats span,.portal-stats strong{display:block}.portal-stats span{font-size:7px;color:var(--muted)}.portal-stats strong{margin-top:2px;font-size:18px;color:var(--p800)}
+.progress-text{display:none;margin:-8px 0 16px;text-align:center;color:var(--muted);font-size:8px;font-weight:500}.decision-card,.order-detail-card{position:relative;width:min(520px,100%);padding:26px;border-radius:22px;background:#fff;box-shadow:0 30px 90px rgba(20,14,28,.24)}.decision-card{text-align:center}.decision-icon{width:58px;height:58px;margin:0 auto 10px;display:grid;place-items:center;border-radius:18px;background:#fff7ed;color:#b45309;font-size:24px;font-weight:700}.decision-card>span{font-size:7px;color:var(--p600);font-weight:700;letter-spacing:.1em}.decision-card h2{margin:4px 0 7px;font-size:23px}.decision-card p{margin:0;color:var(--muted);font-size:9px;line-height:1.7}.decision-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}.order-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-right:28px}.order-detail-head>div>span{font-size:7px;color:var(--p600);font-weight:700}.order-detail-head h2{margin:3px 0;font-size:20px;color:var(--p900)}.modal-close{position:absolute;right:12px;top:12px;width:34px;height:34px;border:0;border-radius:9px;background:#f2edf5;color:#5b21b6;font-size:19px}.order-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.order-detail-grid>div{padding:11px;border-radius:11px;background:#faf8fc;border:1px solid #eee8f1}.order-detail-grid span,.order-detail-grid strong{display:block}.order-detail-grid span{font-size:7px;color:var(--muted)}.order-detail-grid strong{margin-top:2px;font-size:9px}.detail-pickup-code{margin-top:12px;padding:14px;border-radius:13px;background:linear-gradient(115deg,var(--p800),var(--p600),#a97918);color:#fff;text-align:center}.detail-pickup-code span,.detail-pickup-code strong{display:block}.detail-pickup-code span{font-size:7px;color:rgba(255,255,255,.72)}.detail-pickup-code strong{margin-top:2px;font-size:22px;letter-spacing:.1em}.loading-overlay{position:fixed;z-index:150;inset:0;display:grid;place-items:center;background:rgba(248,246,251,.78);backdrop-filter:blur(6px)}.loading-card{min-width:190px;padding:20px;border-radius:17px;background:#fff;box-shadow:0 20px 60px rgba(59,7,100,.15);text-align:center}.spinner{width:34px;height:34px;margin:0 auto 10px;border:3px solid #eee7f4;border-top-color:#7c3aed;border-radius:50%;animation:v12spin .8s linear infinite}.loading-card strong{font-size:10px;color:var(--p800)}@keyframes v12spin{to{transform:rotate(360deg)}}
+.order-history-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.order-history-card:hover{transform:translateY(-2px);border-color:#d8c8e8;box-shadow:0 12px 28px rgba(59,7,100,.08)}.order-view-btn{cursor:pointer}.picked-up{background:#eef2ff;color:#4338ca}.pickup-order-item em.picked_up{background:#eef2ff;color:#4338ca}.status-pill.picked_up{background:#eef2ff;color:#4338ca}
+@media(max-width:600px){.portal-stats{gap:6px;margin-bottom:10px}.portal-stats>div{padding:9px 7px}.portal-stats strong{font-size:15px}.progress-text{display:block}.decision-actions{grid-template-columns:1fr}.order-detail-grid{grid-template-columns:1fr}.order-detail-card,.decision-card{padding:20px 15px}.network-banner{top:6px;font-size:8px}}
+.order-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.order-card-actions .order-view-btn{margin-top:0}
+
+.landing-staff-links{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  margin-top:13px;
+  color:var(--muted);
+  font-size:7px;
+}
+.landing-staff-links a{
+  color:var(--muted);
+  text-decoration:none;
+}
+.landing-staff-links a:hover{
+  color:var(--p700);
+}

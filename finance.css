@@ -100,3 +100,81 @@ tbody tr:hover{
   .stats strong{font-size:21px}
   .panel{padding:12px;border-radius:14px}
 }
+
+.staff-nav-link{
+  min-height:43px;
+  display:flex;
+  align-items:center;
+  margin-bottom:7px;
+  padding:0 11px;
+  border-radius:10px;
+  background:#f0fdf4;
+  color:#15803d;
+  text-decoration:none;
+  font-size:9px;
+}
+.staff-nav-link:hover{background:#dcfce7}
+
+.confirm-status-card{
+  position:relative;
+  width:min(430px,100%);
+  padding:28px;
+  border-radius:21px;
+  background:#fff;
+  text-align:center;
+  box-shadow:0 30px 90px rgba(20,14,28,.24);
+}
+.confirm-status-icon{
+  width:62px;
+  height:62px;
+  margin:0 auto 10px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#f3ecff;
+  color:#5b21b6;
+  font-size:24px;
+  font-weight:700;
+}
+.confirm-status-card>span{
+  color:#7c3aed;
+  font-size:7px;
+  font-weight:700;
+  letter-spacing:.12em;
+}
+.confirm-status-card h2{margin:4px 0 5px}
+.confirm-status-card>p{
+  margin:0;
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.6;
+}
+.confirm-order-summary{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+  margin:15px 0;
+}
+.confirm-order-summary>div{
+  padding:10px;
+  border-radius:10px;
+  background:#faf8fc;
+}
+.confirm-order-summary span,.confirm-order-summary strong{display:block}
+.confirm-order-summary span{font-size:7px;color:var(--muted)}
+.confirm-order-summary strong{font-size:10px}
+.confirm-buttons{
+  display:grid;
+  grid-template-columns:1fr 1.25fr;
+  gap:8px;
+}
+.confirm-buttons button{
+  min-height:43px;
+  border:0;
+  border-radius:10px;
+  font-weight:600;
+}
+#cancelFinanceStatus{background:#f2eff4;color:#675d6c}
+.confirm-verified{background:#dcfce7;color:#15803d}
+.confirm-rejected{background:#fff1f2;color:#be123c}
+.confirm-pending{background:#fff7ed;color:#b45309}

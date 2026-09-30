@@ -28,6 +28,7 @@ const totalRevenue = document.getElementById("totalRevenue");
 const pendingCount = document.getElementById("pendingCount");
 const verifiedCount = document.getElementById("verifiedCount");
 const todayCount = document.getElementById("todayCount");
+const pickedUpCount = document.getElementById("pickedUpCount");
 
 const recentOrders = document.getElementById("recentOrders");
 const searchInput = document.getElementById("searchInput");
@@ -45,11 +46,24 @@ const dContact = document.getElementById("dContact");
 const dQuantity = document.getElementById("dQuantity");
 const dTotal = document.getElementById("dTotal");
 const dSlip = document.getElementById("dSlip");
+const globalPickupStatus = document.getElementById("globalPickupStatus");
+const globalPickupMeta = document.getElementById("globalPickupMeta");
+const openPickupBtn = document.getElementById("openPickupBtn");
+const closePickupBtn = document.getElementById("closePickupBtn");
+const dPickupStatus = document.getElementById("dPickupStatus");
+const dPickupCode = document.getElementById("dPickupCode");
+const setReadyBtn = document.getElementById("setReadyBtn");
+const markPickedUpBtn = document.getElementById("markPickedUpBtn");
+const lockPickupBtn = document.getElementById("lockPickupBtn");
 
 let orders = [];
 let selectedId = null;
 let currentAdmin = null;
 let unsubscribe = null;
+let unsubscribeConfig = null;
+let pickupOpen = false;
+let pickupOpenedAt = null;
+let pickupOpenedBy = null;
 
 restoreSession();
 
@@ -128,6 +142,10 @@ function clearSession() {
     unsubscribe();
     unsubscribe = null;
   }
+  if (unsubscribeConfig) {
+    unsubscribeConfig();
+    unsubscribeConfig = null;
+  }
 }
 
 logoutBtn.addEventListener("click", () => {
@@ -161,6 +179,44 @@ function subscribeOrders() {
 
     renderAll();
   });
+
+  if (unsubscribeConfig) unsubscribeConfig();
+  unsubscribeConfig = onValue(ref(db, "systemConfig"), (snap) => {
+    const config = snap.val() || {};
+    pickupOpen = config.pickupOpen === true;
+    pickupOpenedAt = config.pickupOpenedAt || null;
+    pickupOpenedBy = config.pickupOpenedBy || null;
+    renderPickupControl();
+  });
+}
+
+function renderPickupControl() {
+  if (!globalPickupStatus) return;
+
+  globalPickupStatus.textContent = pickupOpen
+    ? "เปิดรับสินค้าแล้ว"
+    : "ยังไม่เปิดรับสินค้า";
+  globalPickupStatus.className = pickupOpen ? "open" : "closed";
+
+  if (pickupOpen && pickupOpenedAt) {
+    globalPickupMeta.textContent = `เปิดโดย ${pickupOpenedBy || "admin"} · ${formatDate(new Date(pickupOpenedAt))}`;
+  } else {
+    globalPickupMeta.textContent = "รอแอดมินเปิดหลังจบช่วงพรีออเดอร์และสินค้าพร้อม";
+  }
+
+  closePickupBtn.disabled = !pickupOpen;
+  openPickupBtn.textContent = pickupOpen
+    ? "ซิงก์รายการที่ชำระผ่าน"
+    : "เปิดรับสินค้า / ซิงก์รายการ";
+}
+
+function createPickupCode(order) {
+  const source = String(order.referenceCode || order.id || "")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .slice(-6)
+    .toUpperCase();
+
+  return `PK-${source}`;
 }
 
 function renderAll() {
@@ -176,6 +232,9 @@ function renderStats() {
 
   pendingCount.textContent = orders.filter((o) => statusOf(o) === "pending").length;
   verifiedCount.textContent = orders.filter((o) => statusOf(o) === "verified").length;
+  if (pickedUpCount) {
+    pickedUpCount.textContent = orders.filter((o) => (o.pickup?.status || "locked") === "picked_up").length;
+  }
 
   const today = key(new Date());
   todayCount.textContent = orders.filter((o) => {
@@ -237,11 +296,13 @@ function renderTable() {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td><strong>${escapeHTML(nameOf(o))}</strong><br><small>${escapeHTML(c.studentId || "-")}</small></td>
-      <td>${escapeHTML(c.level || "-")} / ${escapeHTML(c.room || "-")}</td>
+      <td><strong>${escapeHTML(nameOf(o))}</strong><br><small>${escapeHTML(c.studentId || c.phone || "-")}</small></td>
+      <td>${o.buyerType === "teacher" ? "ครู" : "นักเรียน"}</td>
+      <td>${c.level ? `${escapeHTML(c.level)} / ${escapeHTML(c.room || "-")}` : "-"}</td>
       <td>${Number(o.order?.quantity || 0)} ใบ</td>
       <td>${money(o.order?.totalAmount || 0)}</td>
       <td>${statusBadge(o)}</td>
+      <td>${pickupBadge(o)}</td>
       <td>${d ? formatDate(d) : "-"}</td>
       <td><button class="small-btn" data-id="${o.id}">ดู</button></td>
     `;
@@ -263,6 +324,70 @@ function attachButtons() {
   });
 }
 
+
+openPickupBtn.addEventListener("click", async () => {
+  const verified = orders.filter((order) =>
+    statusOf(order) === "verified" &&
+    (order.pickup?.status || "locked") !== "picked_up"
+  );
+
+  const message = pickupOpen
+    ? `ต้องการซิงก์ ${verified.length} รายการที่ชำระผ่านให้พร้อมรับสินค้าใช่หรือไม่?`
+    : `ต้องการเปิดการรับสินค้าใช่หรือไม่?\n\nระบบจะทำให้รายการที่ฝ่ายการเงินยืนยันแล้ว ${verified.length} รายการพร้อมรับ`;
+
+  if (!confirm(message)) return;
+
+  const updates = {
+    "systemConfig/pickupOpen": true,
+    "systemConfig/pickupOpenedAt": Date.now(),
+    "systemConfig/pickupOpenedBy": currentAdmin?.username || "admin"
+  };
+
+  verified.forEach((order) => {
+    updates[`preorders/${order.id}/pickup/status`] = "ready";
+    updates[`preorders/${order.id}/pickup/code`] =
+      order.pickup?.code || createPickupCode(order);
+  });
+
+  try {
+    openPickupBtn.disabled = true;
+    await update(ref(db), updates);
+    showToast(`เปิดรับสินค้าแล้ว · พร้อมรับ ${verified.length} รายการ`);
+  } catch (error) {
+    console.error(error);
+    showToast("เปิดการรับสินค้าไม่สำเร็จ");
+  } finally {
+    openPickupBtn.disabled = false;
+  }
+});
+
+closePickupBtn.addEventListener("click", async () => {
+  if (!confirm("ต้องการปิดการรับสินค้าชั่วคราวใช่หรือไม่?\nรายการที่รับไปแล้วจะไม่ถูกเปลี่ยน")) return;
+
+  const updates = {
+    "systemConfig/pickupOpen": false,
+    "systemConfig/pickupClosedAt": Date.now(),
+    "systemConfig/pickupClosedBy": currentAdmin?.username || "admin"
+  };
+
+  orders.forEach((order) => {
+    if ((order.pickup?.status || "locked") === "ready") {
+      updates[`preorders/${order.id}/pickup/status`] = "locked";
+    }
+  });
+
+  try {
+    closePickupBtn.disabled = true;
+    await update(ref(db), updates);
+    showToast("ปิดการรับสินค้าแล้ว");
+  } catch (error) {
+    console.error(error);
+    showToast("ปิดการรับสินค้าไม่สำเร็จ");
+  } finally {
+    closePickupBtn.disabled = false;
+  }
+});
+
 function openDetail(id) {
   const o = orders.find((x) => x.id === id);
   if (!o) return;
@@ -272,14 +397,26 @@ function openDetail(id) {
   const c = o.customer || {};
 
   dReference.textContent = o.referenceCode || "-";
-  dStudentId.textContent = c.studentId || "-";
+  dStudentId.textContent = c.studentId || (o.buyerType === "teacher" ? "ครู" : "-");
   dName.textContent = nameOf(o);
-  dClass.textContent = `${c.level || "-"} / ห้อง ${c.room || "-"}`;
+  dClass.textContent = c.level ? `${c.level} / ห้อง ${c.room || "-"}` : "ครู";
   dPhone.textContent = c.phone || "-";
-  dContact.textContent = `${c.contact?.type === "instagram" ? "Instagram" : "Facebook"} · ${c.contact?.value || "-"}`;
+  dContact.textContent = c.contact ? `${c.contact?.type === "instagram" ? "Instagram" : "Facebook"} · ${c.contact?.value || "-"}` : "-";
   dQuantity.textContent = `${Number(o.order?.quantity || 0)} ใบ`;
   dTotal.textContent = money(o.order?.totalAmount || 0);
   dSlip.src = o.payment?.slipData || "";
+
+  const pickupStatus = o.pickup?.status || "locked";
+  dPickupStatus.textContent = {
+    locked: "ยังไม่พร้อมรับ",
+    ready: "พร้อมรับ",
+    picked_up: "รับสินค้าแล้ว"
+  }[pickupStatus] || pickupStatus;
+  dPickupCode.textContent = o.pickup?.code || "ยังไม่มีรหัส";
+
+  setReadyBtn.disabled = statusOf(o) !== "verified";
+  markPickedUpBtn.disabled = pickupStatus !== "ready";
+  lockPickupBtn.disabled = pickupStatus === "picked_up";
 
   detailModal.classList.remove("hidden");
 }
@@ -306,8 +443,81 @@ document.querySelectorAll("[data-status]").forEach((btn) => {
   });
 });
 
+
+setReadyBtn.addEventListener("click", async () => {
+  const order = orders.find((item) => item.id === selectedId);
+  if (!order) return;
+
+  if (statusOf(order) !== "verified") {
+    showToast("ต้องให้ฝ่ายการเงินยืนยันการชำระเงินก่อน");
+    return;
+  }
+
+  if (!pickupOpen) {
+    showToast("ต้องเปิดการรับสินค้าจากหน้า Dashboard ก่อน");
+    return;
+  }
+
+  if (!confirm(`ยืนยันให้ ${nameOf(order)} พร้อมรับสินค้าใช่หรือไม่?`)) return;
+
+  await update(ref(db, `preorders/${order.id}/pickup`), {
+    status: "ready",
+    code: order.pickup?.code || createPickupCode(order)
+  });
+
+  detailModal.classList.add("hidden");
+  showToast("ตั้งสถานะพร้อมรับแล้ว");
+});
+
+markPickedUpBtn.addEventListener("click", async () => {
+  const order = orders.find((item) => item.id === selectedId);
+  if (!order) return;
+
+  if ((order.pickup?.status || "locked") !== "ready") {
+    showToast("รายการนี้ยังไม่อยู่ในสถานะพร้อมรับ");
+    return;
+  }
+
+  if (!confirm(`ยืนยันว่าได้มอบกระเป๋า ${Number(order.order?.quantity || 0)} ใบให้ ${nameOf(order)} แล้วใช่หรือไม่?`)) return;
+
+  await update(ref(db, `preorders/${order.id}`), {
+    "pickup/status": "picked_up",
+    "pickup/pickedUpAt": Date.now(),
+    "pickup/pickedUpBy": currentAdmin?.username || "admin",
+    status: "completed"
+  });
+
+  detailModal.classList.add("hidden");
+  showToast("บันทึกว่ารับสินค้าแล้ว");
+});
+
+lockPickupBtn.addEventListener("click", async () => {
+  const order = orders.find((item) => item.id === selectedId);
+  if (!order) return;
+
+  if (!confirm(`ต้องการล็อกการรับสินค้าของ ${nameOf(order)} ใช่หรือไม่?`)) return;
+
+  await update(ref(db, `preorders/${order.id}/pickup`), {
+    status: "locked"
+  });
+
+  detailModal.classList.add("hidden");
+  showToast("ล็อกการรับสินค้าแล้ว");
+});
+
 function statusOf(o) {
   return o.payment?.status || "pending";
+}
+
+function pickupBadge(o) {
+  const s = o.pickup?.status || "locked";
+  const label = {
+    locked: "ยังไม่พร้อม",
+    ready: "พร้อมรับ",
+    picked_up: "รับแล้ว"
+  }[s] || s;
+
+  return `<span class="pickup-status ${s}">${label}</span>`;
 }
 
 function statusBadge(o) {
