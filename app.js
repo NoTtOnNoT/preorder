@@ -534,7 +534,7 @@ function renderStudentPickupOrders(){
   });
 }
 
-function resetStudentOrder(){$("studentOrderForm").reset();studentContactType="facebook";studentSlip=null;studentSlipMeta=null;studentStep=1;populateLevels();fillQty($("sQuantity"));$("sSlipPreview").classList.add("hidden");$("sTotal").textContent="฿139";$("sPayAmount").textContent="฿139";$("sQr").src="./qr/qr-1.png";$("sQrInfo").textContent="สำหรับ 1 ใบ";$("sideStudentId").textContent=studentSession.studentId;updateStudentSide();goStudentStep(1);}
+function resetStudentOrder(){$("studentOrderForm").reset();studentContactType="facebook";studentSlip=null;studentSlipMeta=null;studentStep=1;populateLevels();fillQty($("sQuantity"));$("sSlipPreview").classList.add("hidden");$("sTotal").textContent="฿129";$("sPayAmount").textContent="฿129";$("sQr").src="./qr/qr-1.png";$("sQrInfo").textContent="สำหรับ 1 ใบ";$("sideStudentId").textContent=studentSession.studentId;updateStudentSide();goStudentStep(1);}
 $("studentOrderForm").addEventListener("submit",async e=>{
   e.preventDefault();
   if(studentSubmitting) return;
