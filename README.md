@@ -199,3 +199,40 @@ systemConfig/
 - ย้าย `refreshPickupAvailability()` เป็น global module function
 - แยก online/offline event listener ออกจากฟังก์ชัน
 - เพิ่ม try/finally ตอน student login เพื่อให้ Loading Overlay ปิดเสมอ แม้เกิดข้อผิดพลาด
+
+
+## V14.2 — Role Access
+
+กำหนดสิทธิ์หน้าเว็บตาม role:
+
+### `admin`
+- เข้า `admin.html` ได้
+- เข้า `finance.html` ได้
+- จัดการระบบทั้งหมด
+
+### `admin_finance`
+- เข้า `finance.html` ได้เท่านั้น
+- เข้า `admin.html` ไม่ได้
+
+### `finance`
+- เข้า `finance.html` ได้เท่านั้น
+- คงรองรับชื่อ role เดิมไว้
+
+ตัวอย่าง:
+```json
+{
+  "adminAccounts": {
+    "finance01": {
+      "role": "admin_finance",
+      "passwordHash": "SHA256..."
+    },
+    "admin01": {
+      "role": "admin",
+      "passwordHash": "SHA256..."
+    }
+  }
+}
+```
+
+หมายเหตุ: นี่เป็นการจำกัดสิทธิ์ที่หน้าเว็บ/JavaScript
+หากต้องการความปลอดภัยระดับฐานข้อมูลจริง ต้องใช้ Firebase Authentication หรือ backend แล้วล็อก RTDB Rules ตาม role

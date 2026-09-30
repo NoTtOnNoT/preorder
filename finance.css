@@ -178,3 +178,9 @@ tbody tr:hover{
 .confirm-verified{background:#dcfce7;color:#15803d}
 .confirm-rejected{background:#fff1f2;color:#be123c}
 .confirm-pending{background:#fff7ed;color:#b45309}
+
+.role-note{
+  margin:-10px 0 14px;
+  color:var(--muted);
+  font-size:8px;
+}

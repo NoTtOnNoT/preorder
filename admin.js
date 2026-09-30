@@ -85,7 +85,13 @@ loginForm.addEventListener("submit", async (e) => {
       throw new Error("INVALID");
     }
 
-    currentAdmin = { username: user, role: account.role || "admin" };
+    const role = String(account.role || "").trim();
+
+    if (role !== "admin") {
+      throw new Error("NO_ADMIN_ACCESS");
+    }
+
+    currentAdmin = { username: user, role };
 
     saveSession(currentAdmin, rememberLogin.checked);
 
@@ -94,7 +100,11 @@ loginForm.addEventListener("submit", async (e) => {
 
     subscribeOrders();
   } catch (error) {
-    showToast("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+    if (error?.message === "NO_ADMIN_ACCESS") {
+      showToast("บัญชีนี้ไม่มีสิทธิ์เข้า Admin");
+    } else {
+      showToast("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+    }
   }
 });
 
@@ -122,6 +132,12 @@ function restoreSession() {
 
     if (!data.expiresAt || Date.now() > data.expiresAt) {
       clearSession();
+      return;
+    }
+
+    if (data.role !== "admin") {
+      clearSession();
+      showToast("บัญชีนี้ไม่มีสิทธิ์เข้า Admin");
       return;
     }
 

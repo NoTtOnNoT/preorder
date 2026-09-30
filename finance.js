@@ -33,7 +33,7 @@ $("financeLoginForm").addEventListener("submit", async (event) => {
       throw new Error("INVALID");
     }
 
-    if (!["finance", "admin"].includes(account.role || "admin")) {
+    if (!["admin_finance", "finance", "admin"].includes(account.role || "")) {
       throw new Error("ROLE");
     }
 
@@ -70,6 +70,11 @@ function restoreSession() {
   try {
     const data = JSON.parse(raw);
     if (!data.expiresAt || Date.now() > data.expiresAt) {
+      clearSession();
+      return;
+    }
+
+    if (!["admin_finance", "finance", "admin"].includes(data.role || "")) {
       clearSession();
       return;
     }
