@@ -1286,3 +1286,21 @@ label select{
     grid-column:1/-1;
   }
 }
+
+.brand-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.brand-group .brand-logo {
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+}
+
+.brand-group .eyebrow {
+  margin-top: 0;
+}
