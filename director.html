@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#4c1d95">
+  <title>Director Pre-order · SCKC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./director.css">
+</head>
+<body>
+  <div class="ambient"></div>
+
+  <main class="app-shell">
+    <!-- PAGE 0: WELCOME -->
+    <section id="pageWelcome" class="page active">
+      <div class="welcome-card">
+        <div class="welcome-copy">
+          <span class="eyebrow">DIRECTOR EXCLUSIVE</span>
+          <h1>สวัสดีครับ/ค่ะ<br><b>ผอ.สุทธานนท์ ทองนุ่น</b></h1>
+          <p>พรีออเดอร์กระเป๋าผ้า Say No Plastic สำหรับผู้อำนวยการโรงเรียน</p>
+
+          <button id="startPreorder" class="primary big" type="button">
+            พรีออเดอร์กระเป๋า →
+          </button>
+        </div>
+
+        <div class="director-photo-wrap">
+          <img
+            id="directorPhoto"
+            src="./img/director-bag.png"
+            onerror="this.onerror=null;this.src='./img/director-placeholder.svg'"
+            alt="รูปผู้อำนวยการถือถุงผ้า"
+          >
+          <div class="photo-caption">
+            <strong>ผอ.สุทธานนท์ ทองนุ่น</strong>
+            <span>ผู้อำนวยการโรงเรียน</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WIZARD -->
+    <section id="wizardPage" class="page">
+      <header class="wizard-header">
+        <button id="backWelcome" class="ghost" type="button">← หน้าแรก</button>
+        <div class="progress">
+          <div class="progress-line"><i id="progressBar"></i></div>
+          <span id="progressText">ขั้นตอน 1 จาก 3</span>
+        </div>
+      </header>
+
+      <!-- STEP 1 -->
+      <section class="step active" data-step="1">
+        <div class="step-card">
+          <div class="step-title">
+            <span>01</span>
+            <div>
+              <small>SELECT QUANTITY</small>
+              <h2>เลือกจำนวนกระเป๋า</h2>
+              <p>ราคา 129 บาท / ใบ</p>
+            </div>
+          </div>
+
+          <div class="product-card">
+            <img src="./img/product-bag.png" onerror="this.onerror=null;this.src='./img/director-placeholder.svg'" alt="กระเป๋าผ้า">
+            <div>
+              <span>กระเป๋าผ้า Say No Plastic</span>
+              <strong>฿129 / ใบ</strong>
+
+              <label>จำนวนที่ต้องการ
+                <select id="quantity"></select>
+              </label>
+
+              <div class="total-box">
+                <span>ยอดรวม</span>
+                <strong id="totalStep1">฿129</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions end">
+            <button id="goPayment" class="primary" type="button">ถัดไป · ชำระเงิน →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" data-step="2">
+        <div class="step-card">
+          <div class="step-title">
+            <span>02</span>
+            <div>
+              <small>PAYMENT</small>
+              <h2>ชำระเงินและแนบสลิป</h2>
+              <p>สแกน QR ตามจำนวนที่เลือก แล้วแนบหลักฐานการชำระเงิน</p>
+            </div>
+          </div>
+
+          <div class="payment-grid">
+            <div class="qr-card">
+              <span>ยอดที่ต้องชำระ</span>
+              <strong id="payAmount">฿129</strong>
+              <img id="paymentQr" src="./qr/qr-1.png" onerror="this.onerror=null;this.src='./payment-qr.svg'" alt="QR ชำระเงิน">
+              <small id="qrInfo">สำหรับ 1 ใบ</small>
+            </div>
+
+            <div>
+              <div id="uploadZone" class="upload-zone">
+                <input id="slipFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                <b>＋</b>
+                <strong>แนบสลิป</strong>
+                <span>JPG / PNG / WEBP</span>
+              </div>
+
+              <div id="slipPreview" class="slip-preview hidden">
+                <img id="slipImg" alt="">
+                <div>
+                  <strong id="slipName">-</strong>
+                  <span id="slipSize">-</span>
+                </div>
+                <button id="removeSlip" type="button">×</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="backQuantity" class="secondary" type="button">← ย้อนกลับ</button>
+            <button id="goReview" class="primary" type="button">ถัดไป · ตรวจสอบข้อมูล →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" data-step="3">
+        <div class="step-card">
+          <div class="step-title">
+            <span>03</span>
+            <div>
+              <small>FINAL REVIEW</small>
+              <h2>ตรวจสอบและยืนยันข้อมูล</h2>
+              <p>ตรวจสอบข้อมูลให้ถูกต้องก่อนส่งพรีออเดอร์</p>
+            </div>
+          </div>
+
+          <div class="review-card">
+            <div>
+              <span>ผู้สั่งซื้อ</span>
+              <strong>ผอ.สุทธานนท์ ทองนุ่น</strong>
+            </div>
+            <div>
+              <span>ตำแหน่ง</span>
+              <strong>ผู้อำนวยการโรงเรียน</strong>
+            </div>
+            <div>
+              <span>จำนวน</span>
+              <strong id="reviewQty">1 ใบ</strong>
+            </div>
+            <div>
+              <span>ยอดรวม</span>
+              <strong id="reviewTotal">฿129</strong>
+            </div>
+            <div>
+              <span>หลักฐานการชำระเงิน</span>
+              <strong id="reviewSlip">-</strong>
+            </div>
+            <div>
+              <span>สถานะหลังส่ง</span>
+              <strong>รอตรวจสอบการชำระเงิน</strong>
+            </div>
+          </div>
+
+          <label class="confirm">
+            <input id="confirmCheck" type="checkbox">
+            ยืนยันว่าข้อมูลทั้งหมดถูกต้อง
+          </label>
+
+          <div class="actions">
+            <button id="backPayment" class="secondary" type="button">← ย้อนกลับ</button>
+            <button id="submitOrder" class="primary" type="button">ยืนยันและส่งพรีออเดอร์</button>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="loading" class="loading hidden">
+    <div class="spinner"></div>
+    <strong>กำลังบันทึกพรีออเดอร์...</strong>
+  </div>
+
+  <div id="successModal" class="modal hidden">
+    <div class="modal-bg"></div>
+    <div class="success-card thankyou-card">
+      <div class="thankyou-mark">✓</div>
+      <span>PRE-ORDER COMPLETE</span>
+      <h2>ขอขอบพระคุณเป็นอย่างสูง</h2>
+      <p class="thankyou-name">ผอ.สุทธานนท์ ทองนุ่น</p>
+
+      <div class="thankyou-message">
+        <p>
+          ในนามของสภานักเรียนโรงเรียนสะเดา “ขรรค์ชัยกัมพลานนท์อนุสรณ์”
+          ขอกราบขอบพระคุณท่านผู้อำนวยการเป็นอย่างสูง ที่ได้กรุณาให้การสนับสนุน
+          และร่วมเป็นส่วนหนึ่งของกิจกรรมพรีออเดอร์กระเป๋าผ้า <strong>Say No Plastic, Say Hi ถุงผ้า</strong>
+          ซึ่งจัดขึ้นเพื่อส่งเสริมการลดการใช้พลาสติกแบบใช้ครั้งเดียว
+          ตลอดจนสร้างความตระหนักรู้ด้านการอนุรักษ์สิ่งแวดล้อมให้เกิดขึ้นอย่างเป็นรูปธรรมภายในสถานศึกษา
+        </p>
+        <p>
+          การสนับสนุนของท่านในครั้งนี้ นับเป็นทั้งกำลังใจและแบบอย่างที่มีคุณค่าอย่างยิ่งแก่คณะสภานักเรียน
+          และนักเรียนทุกคนในการร่วมกันดำเนินกิจกรรมเพื่อส่วนรวมอย่างสร้างสรรค์ มีความรับผิดชอบ
+          และคำนึงถึงผลกระทบต่อสิ่งแวดล้อม อันสอดคล้องกับแนวทางการพัฒนาสถานศึกษาให้เป็นพื้นที่แห่งการเรียนรู้
+          ที่ส่งเสริมทั้งคุณภาพของผู้เรียน จิตสาธารณะ และการใช้ทรัพยากรอย่างรู้คุณค่า
+        </p>
+        <p>
+          คณะผู้จัดทำขอขอบพระคุณท่านผู้อำนวยการที่ได้มอบความไว้วางใจ สนับสนุนการดำเนินงานของนักเรียน
+          และให้โอกาสแก่พวกเราในการพัฒนาความคิดริเริ่ม การทำงานร่วมกัน และการสร้างประโยชน์ให้แก่โรงเรียน
+          ความกรุณาของท่านจะเป็นแรงผลักดันสำคัญให้พวกเรามุ่งมั่นพัฒนากิจกรรมนี้ให้สำเร็จลุล่วงอย่างเรียบร้อย
+          โปร่งใส และเกิดประโยชน์สูงสุดแก่สถานศึกษาและส่วนรวมต่อไป
+        </p>
+        <p class="thankyou-closing">
+          ด้วยความเคารพและขอบพระคุณอย่างสูง<br>
+          <strong>สภานักเรียนโรงเรียนสะเดา “ขรรค์ชัยกัมพลานนท์อนุสรณ์”</strong>
+        </p>
+      </div>
+
+      <div class="reference-box">
+        <span>เลขอ้างอิงรายการ</span>
+        <strong id="successRef">-</strong>
+      </div>
+
+      <button id="successBack" class="primary" type="button">เสร็จสิ้น · กลับหน้าแรก</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="./director.js"></script>
+</body>
+</html>

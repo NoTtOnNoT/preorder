@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+<defs>
+  <linearGradient id="g" x1="0" x2="1">
+    <stop offset="0" stop-color="#efe8ff"/>
+    <stop offset="1" stop-color="#fff5cf"/>
+  </linearGradient>
+</defs>
+<rect width="1200" height="900" rx="48" fill="url(#g)"/>
+<circle cx="600" cy="300" r="120" fill="#d8c7ef"/>
+<rect x="420" y="430" width="360" height="280" rx="120" fill="#cbb2e8"/>
+<rect x="735" y="500" width="210" height="230" rx="24" fill="#2e1065"/>
+<path d="M775 510c15-85 110-85 125 0" fill="none" stroke="#2e1065" stroke-width="25"/>
+<text x="600" y="815" text-anchor="middle" font-family="sans-serif" font-size="34" fill="#5b21b6">ใส่รูป ผอ.สุทธานนท์ ถือถุงผ้า ที่ img/director-bag.png</text>
+</svg>
