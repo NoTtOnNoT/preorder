@@ -13,7 +13,7 @@
         "pickup/status"
       ],
       "$orderId": {
-        ".write": true,
+        ".write": "data.exists() || now < 1791824400000",
         ".validate": "newData.val() == null || (newData.hasChildren(['buyerType','referenceCode','customer','order','payment','status','createdAt']) && (newData.child('buyerType').val() == 'student' || newData.child('buyerType').val() == 'teacher'))",
         "buyerType": {
           ".validate": "newData.isString() && (newData.val() == 'student' || newData.val() == 'teacher')"
@@ -40,9 +40,12 @@
           }
         },
         "payment": {
-          ".validate": "newData.hasChildren(['method','status','qrNumber','slipData','slipMeta'])",
+          ".validate": "newData.hasChildren(['method','status','qrNumber','slipMeta'])",
           "status": {
             ".validate": "newData.isString() && (newData.val() == 'pending' || newData.val() == 'verified' || newData.val() == 'rejected')"
+          },
+          "hasSlip": {
+            ".validate": "!newData.exists() || newData.isBoolean()"
           }
         },
         "pickup": {
@@ -63,6 +66,13 @@
     "systemConfig": {
       ".read": true,
       ".write": true
+    },
+    "orderSlips": {
+      ".read": true,
+      "$orderId": {
+        ".write": true,
+        ".validate": "newData.val() == null || (newData.hasChildren(['data','meta','uploadedAt']) && newData.child('data').isString() && newData.child('meta').exists() && newData.child('uploadedAt').isNumber())"
+      }
     }
   }
 }

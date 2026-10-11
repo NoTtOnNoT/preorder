@@ -1,15 +1,18 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getDatabase, ref, push, set, get, query, orderByChild, equalTo, serverTimestamp, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import { getDatabase, ref, push, set, get, update, query, orderByChild, equalTo, serverTimestamp, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
 
-const UNIT_PRICE=129,MAX_QTY=10,MAX_SLIP_BYTES=900*1024;
+const UNIT_PRICE=129,MAX_QTY=10,MAX_SLIP_BYTES=450*1024;
+// เปิดรับตลอดวันที่ 12 ตุลาคม 2569 ถึง 23:59:59 น. (เวลาไทย)
+const PREORDER_CLOSE_AT=Date.parse("2026-10-13T00:00:00+07:00");
+const PREORDER_DEADLINE_TEXT="12 ตุลาคม 2569 เวลา 23:59 น. (เวลาไทย)";
 const firebaseApp=initializeApp(firebaseConfig),db=getDatabase(firebaseApp);
 const $=id=>document.getElementById(id);
 const screens=["landing","teacherLoginScreen","studentHub","studentPreorderScreen","pickupScreen","teacherHubScreen","teacherScreen","teacherPickupScreen"];
 const roomLimits={"ม.1":12,"ม.2":12,"ม.3":12,"ม.4":8,"ม.5":7,"ม.6":7,"ปวช.1":2,"ปวช.2":2,"ปวช.3":2};
 const secondaryLevels=["ม.1","ม.2","ม.3","ม.4","ม.5","ม.6"],vocationalLevels=["ปวช.1","ปวช.2","ปวช.3"];
 let studentSession=null,studentOrders=[],studentOrder=null,studentStep=1,studentContactType="facebook",studentSlip=null,studentSlipMeta=null,studentSubmitting=false;
-let teacherStep=1,teacherSlip=null,teacherSlipMeta=null,teacherOrders=[],teacherOrder=null,teacherLookupPhone="",teacherSubmitting=false;let lastFlow="";let pickupOpen=false;
+let teacherStep=1,teacherSlip=null,teacherSlipMeta=null,teacherOrders=[],teacherOrder=null,teacherLookupPhone="",teacherSubmitting=false,teacherSubmitCompleted=false;let lastFlow="";let pickupOpen=false;
 let currentScreen="landing";
 let studentOrdersUnsub=null,teacherOrdersUnsub=null,pickupConfigUnsub=null;
 const STUDENT_SESSION_KEY="sckc_student_session_v1";
@@ -17,7 +20,38 @@ const LAST_PORTAL_KEY="sckc_last_portal_v1";
 const TEACHER_SESSION_KEY="sckc_teacher_session_v1";
 const SESSION_MS=7*24*60*60*1000;
 
-function showScreen(id){currentScreen=id;screens.forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo({top:0,behavior:"auto"});}
+function showScreen(id){if(["studentPreorderScreen","teacherScreen"].includes(id)&&!ensurePreorderOpen())return;currentScreen=id;screens.forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo({top:0,behavior:"auto"});}
+function isPreorderOpen(){return Date.now()<PREORDER_CLOSE_AT;}
+function ensurePreorderOpen(){
+  if(isPreorderOpen())return true;
+  updatePreorderAvailability();
+  toast("ปิดรับพรีออเดอร์แล้ว · กำหนดปิด "+PREORDER_DEADLINE_TEXT,"error");
+  return false;
+}
+function updatePreorderAvailability(){
+  const open=isPreorderOpen();
+  document.querySelectorAll("[data-preorder-deadline]").forEach(el=>{
+    el.textContent=open?"เปิดรับพรีออเดอร์ถึง "+PREORDER_DEADLINE_TEXT:"ปิดรับพรีออเดอร์แล้ว · กำหนดปิด "+PREORDER_DEADLINE_TEXT;
+  });
+  if(!open){
+    ["studentPreorderCard","teacherPreorderCard","continueNewOrderBtn","submitStudentOrderBtn","submitTeacherOrderBtn"].forEach(id=>{
+      const el=$(id);if(el){el.disabled=true;el.title="ปิดรับพรีออเดอร์แล้ว";}
+    });
+  }
+}
+function setupPreorderDeadline(){
+  [document.querySelector(".hero"),$("studentHub"),$("teacherHubScreen"),$("studentOrderForm"),$("teacherForm")].forEach(container=>{
+    if(!container)return;
+    const notice=document.createElement("p");
+    notice.dataset.preorderDeadline="";
+    notice.setAttribute("role","status");
+    container.prepend(notice);
+  });
+  updatePreorderAvailability();
+  setInterval(updatePreorderAvailability,1000);
+  window.addEventListener("focus",updatePreorderAvailability);
+}
+
 function money(v){return `฿${Number(v||0).toLocaleString("th-TH")}`;}
 function setText(id,value){const el=$(id);if(el)el.textContent=value;}
 function paymentLabel(s){return ({pending:"รอตรวจสอบ",verified:"ตรวจสอบแล้ว",rejected:"มีปัญหา",picked_up:"รับสินค้าแล้ว"})[s]||"รอตรวจสอบ";}
@@ -322,6 +356,7 @@ function validateStudentStep(n){if(n===1){for(const id of ["sPrefix","sFirstName
 function renderStudentReview(){const q=Number($("sQuantity").value);$("studentReview").innerHTML=`<div><strong>ชื่อ:</strong> ${escapeHtml(`${$("sPrefix").value}${$("sFirstName").value} ${$("sLastName").value}`)}</div><div><strong>รหัสนักเรียน:</strong> ${escapeHtml(studentSession.studentId)}</div><div><strong>ชั้น:</strong> ${escapeHtml($("sLevel").value)} / ห้อง ${escapeHtml($("sRoom").value)}</div><div><strong>เบอร์:</strong> ${escapeHtml($("sPhone").value)}</div><div><strong>ช่องทาง:</strong> ${escapeHtml(studentContactType)} · ${escapeHtml($("sContactValue").value)}</div><div><strong>จำนวน:</strong> ${q} ใบ</div><div><strong>ยอด:</strong> ${money(q*UNIT_PRICE)}</div>`;}
 
 $("studentPreorderCard").addEventListener("click",()=>{
+  if(!ensurePreorderOpen())return;
   const pending=studentOrders.filter(o=>(o.payment?.status||"pending")==="pending");
   if(pending.length){
     $("duplicateOrderText").textContent=`คุณมี ${pending.length} คำสั่งซื้อที่ยังรอฝ่ายการเงินตรวจสอบอยู่ ต้องการสร้างคำสั่งซื้อใหม่อีกหรือไม่?`;
@@ -537,6 +572,7 @@ function renderStudentPickupOrders(){
 function resetStudentOrder(){$("studentOrderForm").reset();studentContactType="facebook";studentSlip=null;studentSlipMeta=null;studentStep=1;populateLevels();fillQty($("sQuantity"));$("sSlipPreview").classList.add("hidden");$("sTotal").textContent="฿129";$("sPayAmount").textContent="฿129";$("sQr").src="./qr/qr-1.png";$("sQrInfo").textContent="สำหรับ 1 ใบ";$("sideStudentId").textContent=studentSession.studentId;updateStudentSide();goStudentStep(1);}
 $("studentOrderForm").addEventListener("submit",async e=>{
   e.preventDefault();
+  if(!ensurePreorderOpen())return;
   if(studentSubmitting) return;
 
   for(let i=1;i<=4;i++){
@@ -563,14 +599,21 @@ $("studentOrderForm").addEventListener("submit",async e=>{
       contact:{type:studentContactType,value:$("sContactValue").value.trim()}
     },
     order:{unitPrice:UNIT_PRICE,quantity:qty,totalAmount:total},
-    payment:{method:"qr",status:"pending",qrNumber:qty,slipData:studentSlip,slipMeta:studentSlipMeta},
+    payment:{method:"qr",status:"pending",qrNumber:qty,slipMeta:studentSlipMeta,hasSlip:true},
     pickup:{status:"locked",code:null},
     status:"pending_review",
     createdAt:serverTimestamp()
   };
 
   try{
-    await set(r,data);
+    const rootUpdates={};
+    rootUpdates[`preorders/${r.key}`]=data;
+    rootUpdates[`orderSlips/${r.key}`]={
+      data:studentSlip,
+      meta:studentSlipMeta,
+      uploadedAt:Date.now()
+    };
+    await update(ref(db),rootUpdates);
     const localOrder={id:r.key,...data,createdAt:Date.now()};
     studentOrders=sortOrders([localOrder,...studentOrders.filter(o=>o.id!==r.key)]);
     studentOrder=localOrder;
@@ -597,6 +640,7 @@ $("backToTeacherHubFromPickup").addEventListener("click",()=>showScreen("teacher
 
 
 $("teacherPreorderCard").addEventListener("click",()=>{
+  if(!ensurePreorderOpen())return;
   const pending=teacherOrders.filter(o=>(o.payment?.status||"pending")==="pending");
   if(pending.length){
     $("duplicateOrderText").textContent=`พบ ${pending.length} คำสั่งซื้อที่ยังรอฝ่ายการเงินตรวจสอบ ต้องการพรีออเดอร์เพิ่มอีกหรือไม่?`;
@@ -607,6 +651,7 @@ $("teacherPreorderCard").addEventListener("click",()=>{
   startTeacherOrder();
 });
 function startTeacherOrder(){
+  if(!ensurePreorderOpen())return;
   if(!teacherLookupPhone){
     showScreen("teacherLoginScreen");
     return;
@@ -1039,6 +1084,7 @@ function prefillTeacherProfile(){
 }
 
 function resetTeacher(){
+  teacherSubmitCompleted=false;
   $("teacherForm").reset();
   fillQty($("tQuantity"));
   teacherStep=1;
@@ -1054,7 +1100,15 @@ function resetTeacher(){
 }
 $("teacherForm").addEventListener("submit",async e=>{
   e.preventDefault();
+  if(!ensurePreorderOpen())return;
+
   if(teacherSubmitting) return;
+
+  if(teacherSubmitCompleted){
+    toast("คำสั่งซื้อนี้ถูกบันทึกแล้ว กำลังกลับไปหน้าหลักสำหรับครู","success");
+    showScreen("teacherHubScreen");
+    return;
+  }
 
   if(!$("tPrefix").value||!$("tFirstName").value.trim()||!$("tLastName").value.trim()) return toast("กรุณากรอกข้อมูลครูให้ครบ","error");
   if(!/^\d{9,10}$/.test(teacherLookupPhone)) return toast("ไม่พบข้อมูลการเข้าสู่ระบบครู กรุณาเข้าสู่ระบบใหม่","error");
@@ -1071,14 +1125,21 @@ $("teacherForm").addEventListener("submit",async e=>{
     referenceCode:refCode,
     customer:{prefix:$("tPrefix").value,firstName:$("tFirstName").value.trim(),lastName:$("tLastName").value.trim(),phone:teacherLookupPhone},
     order:{unitPrice:UNIT_PRICE,quantity:qty,totalAmount:total},
-    payment:{method:"qr",status:"pending",qrNumber:qty,slipData:teacherSlip,slipMeta:teacherSlipMeta},
+    payment:{method:"qr",status:"pending",qrNumber:qty,slipMeta:teacherSlipMeta,hasSlip:true},
     pickup:{status:"locked",code:null},
     status:"pending_review",
     createdAt:serverTimestamp()
   };
 
   try{
-    await set(r,data);
+    const rootUpdates={};
+    rootUpdates[`preorders/${r.key}`]=data;
+    rootUpdates[`orderSlips/${r.key}`]={
+      data:teacherSlip,
+      meta:teacherSlipMeta,
+      uploadedAt:Date.now()
+    };
+    await update(ref(db),rootUpdates);
     teacherLookupPhone=teacherLookupPhone||$("tPhone").value;
     saveTeacherSession(teacherLookupPhone);
     subscribeTeacherRealtime(teacherLookupPhone);
@@ -1089,6 +1150,10 @@ $("teacherForm").addEventListener("submit",async e=>{
     lastFlow="teacher";
 
     localStorage.removeItem(TEACHER_DRAFT_KEY);
+
+    // Prevent duplicate orders if the user clicks Submit again before leaving this screen.
+    teacherSubmitCompleted=true;
+
     $("successRef").textContent=refCode;
     $("successText").textContent=`พรีออเดอร์สำเร็จ ตอนนี้พบ ${teacherOrders.length} คำสั่งซื้อจากเบอร์นี้`;
     $("successModal").classList.remove("hidden");
@@ -1097,7 +1162,16 @@ $("teacherForm").addEventListener("submit",async e=>{
     toast("บันทึกไม่สำเร็จ กรุณาตรวจสอบ Firebase Rules","error");
   }finally{
     teacherSubmitting=false;
-    if(submitBtn){submitBtn.disabled=false;submitBtn.textContent="ยืนยันพรีออเดอร์สำหรับครู";}
+
+    if(submitBtn){
+      if(teacherSubmitCompleted){
+        submitBtn.disabled=true;
+        submitBtn.textContent="บันทึกพรีออเดอร์แล้ว";
+      }else{
+        submitBtn.disabled=false;
+        submitBtn.textContent="ยืนยันพรีออเดอร์สำหรับครู";
+      }
+    }
   }
 });
 
@@ -1144,7 +1218,7 @@ function restoreTeacherDraft(){
 ["sPrefix","sFirstName","sLastName","sLevel","sRoom","sPhone","sContactValue","sQuantity"].forEach(id=>$(id)?.addEventListener("change",saveStudentDraft));
 ["sFirstName","sLastName","sPhone","sContactValue"].forEach(id=>$(id)?.addEventListener("input",saveStudentDraft));
 ["tPrefix","tFirstName","tLastName","tQuantity"].forEach(id=>{$(id)?.addEventListener("change",saveTeacherDraft);$(id)?.addEventListener("input",saveTeacherDraft);});
-$("continueNewOrderBtn").addEventListener("click",()=>{const flow=$("duplicateOrderModal").dataset.flow;$("duplicateOrderModal").classList.add("hidden");if(flow==="student"){resetStudentOrder();restoreStudentDraft();showScreen("studentPreorderScreen");}else startTeacherOrder();});
+$("continueNewOrderBtn").addEventListener("click",()=>{if(!ensurePreorderOpen())return;const flow=$("duplicateOrderModal").dataset.flow;$("duplicateOrderModal").classList.add("hidden");if(flow==="student"){resetStudentOrder();restoreStudentDraft();showScreen("studentPreorderScreen");}else startTeacherOrder();});
 $("viewExistingOrdersBtn").addEventListener("click",()=>{$("duplicateOrderModal").classList.add("hidden");const flow=$("duplicateOrderModal").dataset.flow;if(flow==="student")showScreen("studentHub");else showScreen("teacherHubScreen");});
 document.querySelectorAll("[data-close-duplicate]").forEach(x=>x.addEventListener("click",()=>$("duplicateOrderModal").classList.add("hidden")));
 function openOrderDetail(o){if(!o)return;const c=o.customer||{},ps=o.payment?.status||"pending",pus=o.pickup?.status||"locked";$("detailOrderRef").textContent=o.referenceCode||"-";$("detailOrderName").textContent=`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim()||"-";$("detailOrderQty").textContent=`${o.order?.quantity||0} ใบ`;$("detailOrderTotal").textContent=money(o.order?.totalAmount||0);$("detailOrderDate").textContent=orderDate(o.createdAt);$("detailFinanceStatus").textContent=paymentLabel(ps);$("detailPickupStatus").textContent=pickupLabel(pus);$("detailOrderStatus").className=`status-pill ${pus==="picked_up"?"picked_up":ps}`;$("detailOrderStatus").textContent=pus==="picked_up"?"รับสินค้าแล้ว":paymentLabel(ps);const showCode=Boolean(o.pickup?.code)&&["ready","picked_up"].includes(pus);$("detailPickupCodeWrap").classList.toggle("hidden",!showCode);$("detailPickupCode").textContent=o.pickup?.code||"-";$("orderDetailModal").classList.remove("hidden");}
@@ -1153,20 +1227,33 @@ $("closeOrderDetail").addEventListener("click",()=>$("orderDetailModal").classLi
 // Slip handlers
 setupSlip("s",v=>{studentSlip=v.data;studentSlipMeta=v.meta;});setupSlip("t",v=>{teacherSlip=v.data;teacherSlipMeta=v.meta;});
 function setupSlip(prefix,onSet){const upload=$(prefix+"Upload"),file=$(prefix+"SlipFile"),preview=$(prefix+"SlipPreview"),img=$(prefix+"SlipImg"),name=$(prefix+"SlipName"),size=$(prefix+"SlipSize"),remove=$(prefix+"RemoveSlip");upload.addEventListener("click",()=>file.click());file.addEventListener("change",async()=>{const f=file.files?.[0];if(!f)return;if(!["image/jpeg","image/png","image/webp"].includes(f.type))return toast("รองรับเฉพาะ JPG, PNG, WEBP","error");try{const result=await compressImage(f);onSet({data:result.dataUrl,meta:{originalName:f.name,originalSize:f.size,compressedSize:result.bytes,mimeType:result.mimeType}});img.src=result.dataUrl;name.textContent=f.name;size.textContent=formatBytes(result.bytes);preview.classList.remove("hidden");toast("แนบสลิปแล้ว","success");}catch(err){console.error(err);toast("ไม่สามารถประมวลผลรูปได้","error");}});remove.addEventListener("click",()=>{file.value="";preview.classList.add("hidden");onSet({data:null,meta:null});});}
-async function compressImage(file){const src=await readData(file),image=await loadImg(src);let w=image.width,h=image.height,max=1400;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d",{alpha:false});x.fillStyle="#fff";x.fillRect(0,0,w,h);x.drawImage(image,0,0,w,h);let quality=.82,data=c.toDataURL("image/jpeg",quality),bytes=dataBytes(data);while(bytes>MAX_SLIP_BYTES&&quality>.42){quality-=.08;data=c.toDataURL("image/jpeg",quality);bytes=dataBytes(data);}return{dataUrl:data,bytes,mimeType:"image/jpeg"};}
+async function compressImage(file){const src=await readData(file),image=await loadImg(src);let w=image.width,h=image.height,max=1200;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d",{alpha:false});x.fillStyle="#fff";x.fillRect(0,0,w,h);x.drawImage(image,0,0,w,h);let quality=.74,data=c.toDataURL("image/jpeg",quality),bytes=dataBytes(data);while(bytes>MAX_SLIP_BYTES&&quality>.38){quality-=.08;data=c.toDataURL("image/jpeg",quality);bytes=dataBytes(data);}return{dataUrl:data,bytes,mimeType:"image/jpeg"};}
 function readData(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}function dataBytes(d){return Math.ceil(((d.split(",")[1]||"").length*3)/4);}function formatBytes(b){return b<1024?`${b} B`:b<1048576?`${(b/1024).toFixed(1)} KB`:`${(b/1048576).toFixed(2)} MB`;}
 
-$("successClose").addEventListener("click",async()=>{
+$("successClose").addEventListener("click",()=>{
   $("successModal").classList.add("hidden");
+
   if(lastFlow==="teacher"){
-    await refreshPickupAvailability(); if(teacherLookupPhone) await refreshTeacherOrder(teacherLookupPhone);
+    // Navigate first so the button feels instant.
+    renderTeacherHub();
     showScreen("teacherHubScreen");
+
+    // Refresh silently in the background. The realtime listener also keeps this page current.
+    refreshPickupAvailability()
+      .then(()=>teacherLookupPhone ? refreshTeacherOrder(teacherLookupPhone) : null)
+      .catch(err=>console.warn("teacher post-submit refresh",err));
+
     return;
   }
+
   if(studentSession){
-    await refreshPickupAvailability();
-    await refreshStudentOrder();
+    // Keep the same fast behavior for students too.
+    renderStudentHub();
     showScreen("studentHub");
+
+    refreshPickupAvailability()
+      .then(()=>refreshStudentOrder())
+      .catch(err=>console.warn("student post-submit refresh",err));
   }else{
     showScreen("landing");
   }
@@ -1180,5 +1267,13 @@ window.addEventListener("DOMContentLoaded",()=>{
 });
 
 
-// Visitor counter: count one view for every index.html page load / refresh.
-trackSiteOpen();
+// Visitor counter runs after the important UI/session work.
+const scheduleSiteStats=()=>{
+  if("requestIdleCallback" in window){
+    requestIdleCallback(()=>trackSiteOpen(),{timeout:2500});
+  }else{
+    setTimeout(()=>trackSiteOpen(),1200);
+  }
+};
+setupPreorderDeadline();
+scheduleSiteStats();
