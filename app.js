@@ -30,26 +30,70 @@ function ensurePreorderOpen(){
 }
 function updatePreorderAvailability(){
   const open=isPreorderOpen();
+  const remaining=Math.max(0,PREORDER_CLOSE_AT-Date.now());
+  const hours=Math.floor(remaining/3600000),minutes=Math.floor(remaining%3600000/60000);
+  const countdown=hours>0?`เหลือ ${hours} ชม. ${minutes} นาที`:minutes>0?`เหลือ ${minutes} นาที`:"นาทีสุดท้าย";
   document.querySelectorAll("[data-preorder-deadline]").forEach(el=>{
-    el.textContent=open?"เปิดรับพรีออเดอร์ถึง "+PREORDER_DEADLINE_TEXT:"ปิดรับพรีออเดอร์แล้ว · กำหนดปิด "+PREORDER_DEADLINE_TEXT;
+    el.classList.toggle("po-deadline-closed",!open);
+    el.querySelector("[data-po-title]").textContent=open?"เปิดรับพรีออเดอร์":"ปิดรับพรีออเดอร์แล้ว";
+    el.querySelector("[data-po-date]").textContent=open?"ถึง 12 ตุลาคม 2569 · 23:59 น. เวลาไทย":"สิ้นสุด 12 ตุลาคม 2569 · 23:59 น. เวลาไทย";
+    el.querySelector("[data-po-time]").textContent=open?countdown:"ขอบคุณทุกคำสั่งซื้อ";
   });
   if(!open){
     ["studentPreorderCard","teacherPreorderCard","continueNewOrderBtn","submitStudentOrderBtn","submitTeacherOrderBtn"].forEach(id=>{
-      const el=$(id);if(el){el.disabled=true;el.title="ปิดรับพรีออเดอร์แล้ว";}
+      const el=$(id);if(el){el.disabled=true;el.title="ปิดรับพรีออเดอร์แล้ว";el.classList.add("po-order-closed");}
+    });
+    ["preorderStatusBadge","teacherPreorderStatusBadge"].forEach(id=>{
+      const el=$(id);if(el)el.textContent="ปิดรับพรีออเดอร์แล้ว";
+    });
+    ["submitStudentOrderBtn","submitTeacherOrderBtn"].forEach(id=>{
+      const el=$(id);if(el)el.textContent="ปิดรับพรีออเดอร์แล้ว";
     });
   }
 }
 function setupPreorderDeadline(){
-  [document.querySelector(".hero"),$("studentHub"),$("teacherHubScreen"),$("studentOrderForm"),$("teacherForm")].forEach(container=>{
-    if(!container)return;
-    const notice=document.createElement("p");
+  if(document.getElementById("poDeadlineStyles"))return;
+  const style=document.createElement("style");
+  style.id="poDeadlineStyles";
+  style.textContent=`
+    .po-deadline{display:flex;align-items:center;gap:13px;position:relative;isolation:isolate;padding:16px 18px;margin:20px 0;border:1px solid rgba(124,58,237,.15);border-radius:20px;background:linear-gradient(120deg,rgba(255,255,255,.96),rgba(245,240,255,.92));box-shadow:0 8px 24px rgba(59,7,100,.045);text-align:left;color:var(--p900,#3b0764)}
+    .po-deadline-icon{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:14px;background:#ede6ff;color:#7c3aed}
+    .po-deadline-icon svg{width:21px;height:21px}
+    .po-deadline-copy{flex:1;min-width:0}
+    .po-deadline-title{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:500;line-height:1.5}
+    .po-deadline-dot{width:6px;height:6px;border-radius:50%;background:#16a34a;flex-shrink:0;box-shadow:0 0 0 3px rgba(22,163,74,.08)}
+    .po-deadline-date{display:block;margin-top:3px;font-size:12px;line-height:1.6;color:#786f80}
+    .po-deadline-time{flex-shrink:0;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:400;color:#6d28d9;background:rgba(124,58,237,.07);white-space:nowrap;font-variant-numeric:tabular-nums}
+    .hero>.po-deadline{max-width:530px;margin-top:20px}
+    .po-deadline-compact{padding:11px 14px;margin:0 0 15px;border-radius:14px;box-shadow:none}
+    .po-deadline-compact .po-deadline-icon{width:34px;height:34px;flex-basis:34px;border-radius:11px}
+    .po-deadline-closed{background:#faf8fc;border-color:#e8e1ec;color:#63566f}
+    .po-deadline-closed .po-deadline-dot{background:#a192ac;box-shadow:none}
+    .po-deadline-closed .po-deadline-icon,.po-deadline-closed .po-deadline-time{background:#eee9f2;color:#786f80}
+    .function-card.po-order-closed{opacity:.72;cursor:default;box-shadow:none}
+    .function-card.po-order-closed:hover{transform:none}
+    button.po-order-closed{cursor:default}
+    @media(max-width:850px){.hero>.po-deadline{margin-left:auto;margin-right:auto}}
+    @media(max-width:480px){.po-deadline{gap:10px;padding:13px;border-radius:16px;flex-wrap:wrap}.po-deadline-copy{flex-basis:calc(100% - 54px)}.po-deadline-time{margin-left:52px}.po-deadline-title{font-size:13px}.po-deadline-date{font-size:11px}.po-deadline-compact{gap:9px;padding:10px 12px;border-radius:13px}.po-deadline-compact .po-deadline-copy{flex-basis:calc(100% - 45px)}.po-deadline-compact .po-deadline-time{margin-left:43px}}
+  `;
+  document.head.appendChild(style);
+  const makeNotice=compact=>{
+    const notice=document.createElement("div");
+    notice.className="po-deadline"+(compact?" po-deadline-compact":"");
     notice.dataset.preorderDeadline="";
-    notice.setAttribute("role","status");
-    container.prepend(notice);
+    notice.innerHTML=`<span class="po-deadline-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="4"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3m2 0h3"/></svg></span><div class="po-deadline-copy"><strong class="po-deadline-title"><i class="po-deadline-dot" aria-hidden="true"></i><span data-po-title></span></strong><span class="po-deadline-date" data-po-date></span></div><span class="po-deadline-time" data-po-time></span>`;
+    return notice;
+  };
+  document.querySelector(".hero")?.appendChild(makeNotice(false));
+  ["studentHub","teacherHubScreen"].forEach(id=>{
+    const stats=$(id)?.querySelector(".portal-stats");
+    if(stats)stats.after(makeNotice(false));
   });
+  ["studentOrderForm","teacherForm"].forEach(id=>$(id)?.prepend(makeNotice(true)));
   updatePreorderAvailability();
   setInterval(updatePreorderAvailability,1000);
   window.addEventListener("focus",updatePreorderAvailability);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)updatePreorderAvailability();});
 }
 
 function money(v){return `฿${Number(v||0).toLocaleString("th-TH")}`;}
