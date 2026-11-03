@@ -1,5 +1,5 @@
-import { subscribeOrderSummaries, prepareOrderIndex, loadOrderDetail, updateIndexedOrder, updateIndexedRoot } from "./order-data.js?v=20261103-usage2";
-import { createOrderControls } from "./order-ui.js?v=20261103-usage2";
+import { subscribeOrderSummaries, prepareOrderIndex, loadOrderDetail, updateIndexedOrder, updateIndexedRoot } from "./order-data.js?v=20261103-complete3";
+import { createOrderControls } from "./order-ui.js?v=20261103-complete3";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
@@ -75,7 +75,9 @@ let pickupOpenedBy = null;
 const slipCache = new Map();
 let orderListReady=false,detailRequest=0;
 const dataControls=createOrderControls(adminApp.querySelector("main"),orderTableBody,
-  ()=>subscribeOrders(),()=>rebuildOrderList(),()=>renderTable());
+  ()=>subscribeOrders(),()=>rebuildOrderList(),()=>renderTable(),()=>{
+    searchInput.value="";statusFilter.value="";levelFilter.value="";dataControls.resetPage();renderTable();
+  });
 
 restoreSession();
 
@@ -208,8 +210,8 @@ function subscribeOrders() {
   unsubscribe=subscribeOrderSummaries(db,raw=>{
     orders=Object.entries(raw).map(([id,value])=>({id,...value}))
       .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
-    orderListReady=true;dataControls.ready();renderAll();
-  },error=>{orderListReady=false;dataControls.error(error);},count=>dataControls.loading(count));
+    orderListReady=true;dataControls.ready(orders.length);renderAll();
+  },error=>{orderListReady=false;dataControls.error(error);},(count,total)=>dataControls.loading(count,total));
   if(!unsubscribeConfig)unsubscribeConfig=onValue(ref(db,"systemConfig"),snap=>{
     const config=snap.val()||{};
     pickupOpen=config.pickupOpen===true;
@@ -237,7 +239,7 @@ function subscribeOrders() {
 async function rebuildOrderList(){
   if(unsubscribe){unsubscribe();unsubscribe=null;}
   orderListReady=false;dataControls.loading();
-  try{await prepareOrderIndex(db,count=>dataControls.loading(count),true);subscribeOrders();}
+  try{await prepareOrderIndex(db,(count,total)=>dataControls.loading(count,total),true);subscribeOrders();}
   catch(error){dataControls.error(error);}
 }
 function stopAdminReads(){

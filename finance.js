@@ -1,5 +1,5 @@
-import { subscribeOrderSummaries, prepareOrderIndex, loadOrderDetail, updateIndexedOrder } from "./order-data.js?v=20261103-usage2";
-import { createOrderControls } from "./order-ui.js?v=20261103-usage2";
+import { subscribeOrderSummaries, prepareOrderIndex, loadOrderDetail, updateIndexedOrder } from "./order-data.js?v=20261103-complete3";
+import { createOrderControls } from "./order-ui.js?v=20261103-complete3";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
@@ -13,12 +13,16 @@ let user = null;
 let orders = [];
 let selected = null;
 let unsubscribe = null;
-let currentView = "pending";
+let currentView = "all";
 let pendingStatus = null;
 const slipCache = new Map();
 let detailRequest=0;
 const dataControls=createOrderControls($("financeApp").querySelector("main"),$("financeTable"),
-  ()=>subscribeOrders(),()=>rebuildOrderList(),()=>renderTable());
+  ()=>subscribeOrders(),()=>rebuildOrderList(),()=>renderTable(),()=>{
+    ["fSearch","fType","fStatus"].forEach(id=>$(id).value="");currentView="all";
+    document.querySelectorAll(".nav").forEach(button=>button.classList.toggle("active",button.dataset.view==="all"));
+    dataControls.resetPage();renderTable();
+  });
 
 restoreSession();
 
@@ -120,13 +124,13 @@ function subscribeOrders(){
   unsubscribe=subscribeOrderSummaries(db,raw=>{
     orders=Object.entries(raw).map(([id,value])=>({id,...value}))
       .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
-    dataControls.ready();render();
-  },error=>dataControls.error(error),count=>dataControls.loading(count));
+    dataControls.ready(orders.length);render();
+  },error=>dataControls.error(error),(count,total)=>dataControls.loading(count,total));
 }
 async function rebuildOrderList(){
   if(unsubscribe){unsubscribe();unsubscribe=null;}
   dataControls.loading();
-  try{await prepareOrderIndex(db,count=>dataControls.loading(count),true);subscribeOrders();}
+  try{await prepareOrderIndex(db,(count,total)=>dataControls.loading(count,total),true);subscribeOrders();}
   catch(error){dataControls.error(error);}
 }
 function stopFinanceReads(){if(unsubscribe){unsubscribe();unsubscribe=null;}}
