@@ -1,3 +1,4 @@
+import { indexedRootUpdates } from "./order-data.js?v=20261103-usage2";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, push, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
@@ -161,7 +162,7 @@ $("submitOrder").addEventListener("click",async()=>{
     const updates={};
     updates[`preorders/${orderNode.key}`]=data;
     updates[`orderSlips/${orderNode.key}`]={data:slipData,meta:slipMeta,uploadedAt:Date.now()};
-    await update(ref(db),updates);
+    await update(ref(db),indexedRootUpdates(updates));
     submitted=true;
     $("successRef").textContent=code;
     $("successModal").classList.remove("hidden");

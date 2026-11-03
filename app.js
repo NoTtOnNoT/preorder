@@ -1,5 +1,6 @@
+import { customerOrderPath, indexedRootUpdates } from "./order-data.js?v=20261103-usage2";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getDatabase, ref, push, set, get, update, query, orderByChild, equalTo, serverTimestamp, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import { getDatabase, ref, push, set, update, query, orderByChild, equalTo, serverTimestamp, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const UNIT_PRICE=129,MAX_QTY=10,MAX_SLIP_BYTES=450*1024;
@@ -20,12 +21,17 @@ const orderLoads={
   teacher:{status:"idle",error:null,request:0,revision:0,subscription:0}
 };
 const pickupConfigState={status:"idle",error:null};
+let pickupConfigPending=null,pickupConfigFinish=null,pickupConfigTimer=null;
 const STUDENT_SESSION_KEY="sckc_student_session_v1";
 const LAST_PORTAL_KEY="sckc_last_portal_v1";
 const TEACHER_SESSION_KEY="sckc_teacher_session_v1";
 const SESSION_MS=7*24*60*60*1000;
 
-function showScreen(id){if(["studentPreorderScreen","teacherScreen"].includes(id)&&!ensurePreorderOpen())return;currentScreen=id;screens.forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo({top:0,behavior:"auto"});}
+function showScreen(id){
+  if(!["studentHub","studentPreorderScreen","pickupScreen"].includes(id))stopCustomerRealtime("student");
+  if(!["teacherHubScreen","teacherScreen","teacherPickupScreen"].includes(id))stopCustomerRealtime("teacher");
+  if(!["studentHub","studentPreorderScreen","pickupScreen","teacherHubScreen","teacherScreen","teacherPickupScreen"].includes(id))stopPickupConfigRealtime();
+  if(["studentPreorderScreen","teacherScreen"].includes(id)&&!ensurePreorderOpen())return;currentScreen=id;screens.forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo({top:0,behavior:"auto"});}
 function isPreorderOpen(){return Date.now()<PREORDER_CLOSE_AT;}
 function ensurePreorderOpen(){
   if(isPreorderOpen())return true;
@@ -199,50 +205,95 @@ function commitCustomerOrders(kind,snapshot,identity){
   orderLoads[kind].status="ready";
   orderLoads[kind].error=null;
 }
+function customerUnsubscribe(kind){return kind==="student"?studentOrdersUnsub:teacherOrdersUnsub;}
+function setCustomerUnsubscribe(kind,fn){if(kind==="student")studentOrdersUnsub=fn;else teacherOrdersUnsub=fn;}
+function stopCustomerRealtime(kind){
+  const state=orderLoads[kind];
+  state.subscription++;
+  customerUnsubscribe(kind)?.();
+  setCustomerUnsubscribe(kind,null);
+  state.pending=null;state.identity="";
+  state.status="idle";state.error=null;
+}
 async function refreshCustomerOrders(kind,identity){
   identity=String(identity||"");
   if(!identity||orderIdentity(kind)!==identity)return false;
-  const state=orderLoads[kind],request=++state.request,revision=state.revision;
-  state.status="loading";
-  state.error=null;
-  renderOrderViews(kind);
-  const isCurrent=()=>orderIdentity(kind)===identity&&request===state.request;
-  try{
-    const field=kind==="student"?"studentId":"phone";
-    const snapshot=await get(query(ref(db,"preorders"),orderByChild(`customer/${field}`),equalTo(identity)));
-    if(!isCurrent())return false;
-    // A newer realtime result takes priority over an in-flight one-off read.
-    if(revision!==state.revision)return state.status==="ready";
-    commitCustomerOrders(kind,snapshot,identity);
-    renderOrderViews(kind);
-    return true;
-  }catch(error){
-    if(!isCurrent())return false;
-    if(revision!==state.revision)return state.status==="ready";
-    console.error("Unable to load orders",error);
-    // Keep any cached records, but do not present them as a confirmed result.
-    state.status="error";
-    state.error=error;
-    renderOrderViews(kind);
-    return false;
+  stopCustomerRealtime(kind==="student"?"teacher":"student");
+  const state=orderLoads[kind];
+  if(customerUnsubscribe(kind)&&state.identity===identity){
+    if(state.status==="ready")return true;
+    if(state.pending)return state.pending;
   }
+  // The same persistent listener supplies both the initial result and future changes.
+  // No get(query) + onValue(query) pair and no re-read on each pickup-page visit.
+  const path=await customerOrderPath(db);
+  if(orderIdentity(kind)!==identity||document.hidden)return false;
+  if(customerUnsubscribe(kind)&&state.identity===identity){
+    if(state.status==="ready")return true;
+    if(state.pending)return state.pending;
+  }
+  stopCustomerRealtime(kind);
+  const subscription=++state.subscription;
+  state.identity=identity;state.status="loading";state.error=null;
+  renderOrderViews(kind);
+  const field=kind==="student"?"studentId":"phone";
+  let wireStop=null,cancelled=false,timer=null,finish;
+  const pending=new Promise(resolve=>{finish=result=>{clearTimeout(timer);if(state.pending===pending)state.pending=null;resolve(result);};});
+  state.pending=pending;
+  const current=()=>!cancelled&&state.subscription===subscription&&orderIdentity(kind)===identity;
+  const fail=error=>{
+    if(!current())return;
+    cancelled=true;wireStop?.();setCustomerUnsubscribe(kind,null);
+    state.status="error";state.error=error;
+    renderOrderViews(kind);finish(false);
+  };
+  timer=setTimeout(()=>fail(Object.assign(new Error("Order read timed out"),{code:"DATABASE_TIMEOUT"})),15000);
+  wireStop=onValue(query(ref(db,path),orderByChild(`customer/${field}`),equalTo(identity)),snap=>{
+    if(!current())return;
+    state.revision++;
+    commitCustomerOrders(kind,snap,identity);
+    renderOrderViews(kind);finish(true);
+  },fail);
+  setCustomerUnsubscribe(kind,()=>{cancelled=true;wireStop?.();finish(false);});
+  return pending;
+}
+function stopPickupConfigRealtime(){
+  pickupConfigUnsub?.();pickupConfigUnsub=null;
+  clearTimeout(pickupConfigTimer);pickupConfigTimer=null;
+  pickupConfigFinish?.(false);pickupConfigFinish=null;pickupConfigPending=null;
+  pickupConfigState.status="idle";pickupConfigState.error=null;
 }
 async function refreshPickupAvailability(){
+  if(pickupConfigUnsub&&pickupConfigState.status==="ready")return pickupOpen;
+  if(pickupConfigPending){await pickupConfigPending;return pickupConfigState.status==="ready"&&pickupOpen;}
+  if(document.hidden)return false;
+  stopPickupConfigRealtime();
   pickupConfigState.status="loading";
-  pickupConfigState.error=null;
-  try{
-    const snap=await get(ref(db,"systemConfig/pickupOpen"));
+  let wireStop=null,cancelled=false,finish;
+  const pending=new Promise(resolve=>{finish=result=>{
+    clearTimeout(pickupConfigTimer);pickupConfigTimer=null;
+    if(pickupConfigPending===pending){pickupConfigPending=null;pickupConfigFinish=null;}
+    resolve(result);
+  };});
+  pickupConfigPending=pending;pickupConfigFinish=finish;
+  const render=()=>{if(studentSession)renderOrderViews("student");if(teacherLookupPhone)renderOrderViews("teacher");};
+  const fail=error=>{
+    if(cancelled)return;cancelled=true;wireStop?.();pickupConfigUnsub=null;
+    pickupConfigState.status="error";pickupConfigState.error=error;
+    render();finish(false);
+  };
+  pickupConfigTimer=setTimeout(()=>fail(Object.assign(new Error("Config read timed out"),{code:"DATABASE_TIMEOUT"})),15000);
+  wireStop=onValue(ref(db,"systemConfig/pickupOpen"),snap=>{
+    if(cancelled)return;
     pickupOpen=snap.exists()&&snap.val()===true;
-    pickupConfigState.status="ready";
-  }catch(error){
-    console.warn("Unable to load pickup availability",error);
-    pickupConfigState.status="error";
-    pickupConfigState.error=error;
-  }
-  if(studentSession)renderOrderViews("student");
-  if(teacherLookupPhone)renderOrderViews("teacher");
+    pickupConfigState.status="ready";pickupConfigState.error=null;
+    render();finish(true);
+  },fail);
+  pickupConfigUnsub=()=>{cancelled=true;wireStop?.();finish(false);};
+  await pending;
   return pickupConfigState.status==="ready"&&pickupOpen;
 }
+
 function renderPickupLoadState(kind){
   const state=orderLoads[kind];
   if(state.status==="ready")return false;
@@ -313,6 +364,7 @@ function saveStudentSession(){
 }
 
 function clearStudentSession(){
+  stopCustomerRealtime("student");
   Object.assign(orderLoads.student,{status:"idle",error:null,request:orderLoads.student.request+1,subscription:orderLoads.student.subscription+1});
   localStorage.removeItem(STUDENT_SESSION_KEY);
   if(localStorage.getItem(LAST_PORTAL_KEY)==="student")localStorage.removeItem(LAST_PORTAL_KEY);
@@ -326,6 +378,7 @@ function saveTeacherSession(phone){
 }
 
 function clearTeacherSession(){
+  stopCustomerRealtime("teacher");
   Object.assign(orderLoads.teacher,{status:"idle",error:null,request:orderLoads.teacher.request+1,subscription:orderLoads.teacher.subscription+1});
   localStorage.removeItem(TEACHER_SESSION_KEY);
   if(localStorage.getItem(LAST_PORTAL_KEY)==="teacher")localStorage.removeItem(LAST_PORTAL_KEY);
@@ -349,64 +402,33 @@ function readValidSession(key){
   }
 }
 
-function subscribePickupConfigRealtime(){
-  if(pickupConfigUnsub)pickupConfigUnsub();
-  pickupConfigUnsub=onValue(ref(db,"systemConfig/pickupOpen"),snap=>{
-    pickupOpen=snap.exists()&&snap.val()===true;
-    pickupConfigState.status="ready";
-    pickupConfigState.error=null;
-    if(studentSession)renderOrderViews("student");
-    if(teacherLookupPhone)renderOrderViews("teacher");
-  },error=>{
-    console.warn("pickup realtime",error);
-    pickupConfigState.status="error";
-    pickupConfigState.error=error;
-    if(studentSession)renderOrderViews("student");
-    if(teacherLookupPhone)renderOrderViews("teacher");
-  });
-}
-function subscribeCustomerRealtime(kind,identity){
-  const state=orderLoads[kind],subscription=++state.subscription;
-  const field=kind==="student"?"studentId":"phone";
-  const isCurrent=()=>orderIdentity(kind)===identity&&state.subscription===subscription;
-  return onValue(query(ref(db,"preorders"),orderByChild(`customer/${field}`),equalTo(identity)),snap=>{
-    if(!isCurrent())return;
-    state.revision++;
-    commitCustomerOrders(kind,snap,identity);
-    renderOrderViews(kind);
-  },error=>{
-    if(!isCurrent())return;
-    console.warn(kind+" realtime",error);
-    state.revision++;
-    state.status="error";
-    state.error=error;
-    renderOrderViews(kind);
-  });
-}
-function subscribeStudentRealtime(){
-  if(studentOrdersUnsub)studentOrdersUnsub();
-  if(!studentSession)return;
-  studentOrdersUnsub=subscribeCustomerRealtime("student",orderIdentity("student"));
-}
-function subscribeTeacherRealtime(phone){
-  if(teacherOrdersUnsub)teacherOrdersUnsub();
-  if(!phone)return;
-  teacherOrdersUnsub=subscribeCustomerRealtime("teacher",String(phone));
-}
+function subscribePickupConfigRealtime(){return pickupConfigState.status==="error"?Promise.resolve(false):refreshPickupAvailability();}
+function subscribeStudentRealtime(){return orderLoads.student.status==="error"?Promise.resolve(false):refreshCustomerOrders("student",orderIdentity("student"));}
+function subscribeTeacherRealtime(phone){return orderLoads.teacher.status==="error"?Promise.resolve(false):refreshCustomerOrders("teacher",String(phone||""));}
+function pauseCustomerReads(){stopCustomerRealtime("student");stopCustomerRealtime("teacher");stopPickupConfigRealtime();}
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){pauseCustomerReads();return;}
+  if(["studentHub","studentPreorderScreen","pickupScreen"].includes(currentScreen)&&studentSession){
+    refreshPickupAvailability();refreshStudentOrder();
+  }else if(["teacherHubScreen","teacherScreen","teacherPickupScreen"].includes(currentScreen)&&teacherLookupPhone){
+    refreshPickupAvailability();refreshTeacherOrder(teacherLookupPhone);
+  }
+});
+window.addEventListener("pagehide",pauseCustomerReads);
+window.addEventListener("pageshow",event=>{
+  if(!event.persisted||document.hidden)return;
+  if(["studentHub","studentPreorderScreen","pickupScreen"].includes(currentScreen)&&studentSession){refreshPickupAvailability();refreshStudentOrder();}
+  if(["teacherHubScreen","teacherScreen","teacherPickupScreen"].includes(currentScreen)&&teacherLookupPhone){refreshPickupAvailability();refreshTeacherOrder(teacherLookupPhone);}
+});
 
 async function restorePersistentLogin(){
-  subscribePickupConfigRealtime();
 
   const lastPortal=localStorage.getItem(LAST_PORTAL_KEY);
   const teacherSaved=readValidSession(TEACHER_SESSION_KEY);
   const studentSaved=readValidSession(STUDENT_SESSION_KEY);
 
-  if(teacherSaved?.phone){
-    teacherLookupPhone=teacherSaved.phone;
-    subscribeTeacherRealtime(teacherSaved.phone);
-  }
-
   if(lastPortal==="teacher" && teacherSaved?.phone){
+    teacherLookupPhone=teacherSaved.phone;
     setLoading(true,"กำลังเข้าสู่ระบบสำหรับครู...");
     try{
       await refreshPickupAvailability();
@@ -762,7 +784,7 @@ $("studentOrderForm").addEventListener("submit",async e=>{
       meta:studentSlipMeta,
       uploadedAt:Date.now()
     };
-    await update(ref(db),rootUpdates);
+    await update(ref(db),indexedRootUpdates(rootUpdates));
     const localOrder={id:r.key,...data,createdAt:Date.now()};
     studentOrders=sortOrders([localOrder,...studentOrders.filter(o=>o.id!==r.key)]);
     studentOrder=localOrder;
@@ -1267,7 +1289,7 @@ $("teacherForm").addEventListener("submit",async e=>{
       meta:teacherSlipMeta,
       uploadedAt:Date.now()
     };
-    await update(ref(db),rootUpdates);
+    await update(ref(db),indexedRootUpdates(rootUpdates));
     teacherLookupPhone=teacherLookupPhone||$("tPhone").value;
     saveTeacherSession(teacherLookupPhone);
     subscribeTeacherRealtime(teacherLookupPhone);

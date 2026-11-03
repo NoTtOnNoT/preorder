@@ -1,5 +1,7 @@
+import { subscribeOrderSummaries, prepareOrderIndex, loadOrderDetail, updateIndexedOrder } from "./order-data.js?v=20261103-usage2";
+import { createOrderControls } from "./order-ui.js?v=20261103-usage2";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
@@ -13,6 +15,10 @@ let selected = null;
 let unsubscribe = null;
 let currentView = "pending";
 let pendingStatus = null;
+const slipCache = new Map();
+let detailRequest=0;
+const dataControls=createOrderControls($("financeApp").querySelector("main"),$("financeTable"),
+  ()=>subscribeOrders(),()=>rebuildOrderList(),()=>renderTable());
 
 restoreSession();
 
@@ -87,6 +93,7 @@ function restoreSession() {
 }
 
 function clearSession() {
+  user=null;
   localStorage.removeItem(SESSION);
   sessionStorage.removeItem(SESSION);
   if (unsubscribe) {
@@ -106,23 +113,35 @@ $("financeLogout").addEventListener("click", () => {
   location.reload();
 });
 
-function subscribeOrders() {
-  if (unsubscribe) unsubscribe();
-
-  unsubscribe = onValue(ref(db, "preorders"), (snap) => {
-    orders = Object.entries(snap.val() || {})
-      .map(([id, value]) => ({ id, ...value }))
-      .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-
-    render();
-  });
+function subscribeOrders(){
+  if(unsubscribe)unsubscribe();
+  dataControls.loading();
+  ["fPending","navPending","fVerified","fRejected","fTotal"].forEach(id=>$(id).textContent="—");
+  unsubscribe=subscribeOrderSummaries(db,raw=>{
+    orders=Object.entries(raw).map(([id,value])=>({id,...value}))
+      .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+    dataControls.ready();render();
+  },error=>dataControls.error(error),count=>dataControls.loading(count));
 }
+async function rebuildOrderList(){
+  if(unsubscribe){unsubscribe();unsubscribe=null;}
+  dataControls.loading();
+  try{await prepareOrderIndex(db,count=>dataControls.loading(count),true);subscribeOrders();}
+  catch(error){dataControls.error(error);}
+}
+function stopFinanceReads(){if(unsubscribe){unsubscribe();unsubscribe=null;}}
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden)stopFinanceReads();
+  else if(user&&!$("financeApp").classList.contains("hidden"))subscribeOrders();
+});
+window.addEventListener("pagehide",stopFinanceReads);
+window.addEventListener("pageshow",event=>{if(event.persisted&&!document.hidden&&user&&!$("financeApp").classList.contains("hidden"))subscribeOrders();});
 
-$("financeRefresh").addEventListener("click", render);
+$("financeRefresh").addEventListener("click",()=>subscribeOrders());
 
 ["fSearch", "fType", "fStatus"].forEach((id) => {
-  $(id).addEventListener("input", renderTable);
-  $(id).addEventListener("change", renderTable);
+  $(id).addEventListener("input",()=>{dataControls.resetPage();renderTable();});
+  $(id).addEventListener("change",()=>{dataControls.resetPage();renderTable();});
 });
 
 document.querySelectorAll(".nav").forEach((button) => {
@@ -130,6 +149,7 @@ document.querySelectorAll(".nav").forEach((button) => {
     document.querySelectorAll(".nav").forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
     currentView = button.dataset.view;
+    dataControls.resetPage();
     renderTable();
   });
 });
@@ -171,10 +191,10 @@ function renderTable() {
     ].filter(Boolean).join(" ").toLowerCase().includes(q);
   });
 
-  $("financeTable").innerHTML = list.map((order) => `
+  $("financeTable").innerHTML = dataControls.page(list).map((order) => `
     <tr>
       <td><strong>${escapeHTML(fullName(order))}</strong><br><small>${escapeHTML(order.referenceCode || "-")}</small></td>
-      <td>${order.buyerType === "teacher" ? "ครู" : "นักเรียน"}</td>
+      <td>${({student:"นักเรียน",teacher:"ครู",director:"ผอ."})[order.buyerType]||"-"}</td>
       <td>${Number(order.order?.quantity || 0)} ใบ</td>
       <td>${money(order.order?.totalAmount)}</td>
       <td>${statusBadge(paymentStatus(order))}</td>
@@ -188,17 +208,22 @@ function renderTable() {
   });
 }
 
-function openOrder(id) {
-  const order = orders.find((item) => item.id === id);
-  if (!order) return;
-
+async function openOrder(id) {
+  if(!orders.some(order=>order.id===id))return;
+  const request=++detailRequest;
+  $("financeModal").classList.add("hidden");
+  let order;
+  try{order=await loadOrderDetail(db,id);}
+  catch(error){console.error(error);toast("โหลดรายละเอียดไม่สำเร็จ กรุณาลองใหม่");return;}
+  if(request!==detailRequest)return;
+  if(!order){toast("ไม่พบคำสั่งซื้อนี้");return;}
   selected = order;
   const customer = order.customer || {};
 
   $("fmName").textContent = fullName(order);
   $("fmAmount").textContent = money(order.order?.totalAmount);
   $("fmRef").textContent = order.referenceCode || "-";
-  $("fmType").textContent = order.buyerType === "teacher" ? "ครู" : "นักเรียน";
+  $("fmType").textContent = ({student:"นักเรียน",teacher:"ครู",director:"ผอ."})[order.buyerType]||"-";
   $("fmStudent").textContent = customer.studentId || "-";
   $("fmClass").textContent = customer.level
     ? `${customer.level} / ห้อง ${customer.room || "-"}`
@@ -207,7 +232,29 @@ function openOrder(id) {
   $("fmQty").textContent = `${Number(order.order?.quantity || 0)} ใบ`;
   $("fmDate").textContent = formatDate(order.createdAt);
   $("fmStatus").textContent = statusLabel(paymentStatus(order));
-  $("fmSlip").src = order.payment?.slipData || "";
+  const slipImg=$("fmSlip");
+  const oldSlip=order.payment?.slipData||"";
+  if(oldSlip){
+    slipImg.src=oldSlip;
+    slipImg.alt="สลิปการชำระเงิน";
+  }else{
+    slipImg.removeAttribute("src");
+    slipImg.alt="กำลังโหลดสลิป...";
+    try{
+      let slip=slipCache.get(order.id);
+      if(!slip){
+        const slipSnap=await get(ref(db,`orderSlips/${order.id}/data`));
+        slip=slipSnap.exists()?slipSnap.val():"";
+        if(slip) slipCache.set(order.id,slip);
+        if(request!==detailRequest)return;
+      }
+      slipImg.src=slip||"";
+      slipImg.alt=slip?"สลิปการชำระเงิน":"ไม่พบสลิป";
+    }catch(error){
+      console.error("load slip",error);
+      slipImg.alt="โหลดสลิปไม่สำเร็จ";
+    }
+  }
   $("fmBankRef").value = order.payment?.bankReference || "";
   $("fmNote").value = order.payment?.financeNote || "";
 
@@ -306,7 +353,7 @@ $("confirmFinanceStatus").addEventListener("click", async () => {
   };
 
   try {
-    await update(ref(db, `preorders/${selected.id}`), patch);
+    await updateIndexedOrder(db, selected.id, patch);
 
     closeStatusConfirmation();
     $("financeModal").classList.add("hidden");

@@ -1,5 +1,7 @@
+import { subscribeOrderSummaries, prepareOrderIndex, loadOrderDetail, updateIndexedOrder, updateIndexedRoot } from "./order-data.js?v=20261103-usage2";
+import { createOrderControls } from "./order-ui.js?v=20261103-usage2";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
@@ -70,6 +72,10 @@ let unsubscribeSiteStats = null;
 let pickupOpen = false;
 let pickupOpenedAt = null;
 let pickupOpenedBy = null;
+const slipCache = new Map();
+let orderListReady=false,detailRequest=0;
+const dataControls=createOrderControls(adminApp.querySelector("main"),orderTableBody,
+  ()=>subscribeOrders(),()=>rebuildOrderList(),()=>renderTable());
 
 restoreSession();
 
@@ -157,6 +163,7 @@ function restoreSession() {
 }
 
 function clearSession() {
+  currentAdmin=null;
   localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(SESSION_KEY);
 
@@ -195,31 +202,55 @@ navs.forEach((btn) => {
 
 function subscribeOrders() {
   if (unsubscribe) unsubscribe();
-
-  unsubscribe = onValue(ref(db, "preorders"), (snap) => {
-    const raw = snap.val() || {};
-
-    orders = Object.entries(raw)
-      .map(([id, value]) => ({ id, ...value }))
-      .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-
-    renderAll();
-  });
-
-  if (unsubscribeConfig) unsubscribeConfig();
-  unsubscribeConfig = onValue(ref(db, "systemConfig"), (snap) => {
-    const config = snap.val() || {};
-    pickupOpen = config.pickupOpen === true;
-    pickupOpenedAt = config.pickupOpenedAt || null;
-    pickupOpenedBy = config.pickupOpenedBy || null;
+  orderListReady=false;
+  dataControls.loading();
+  [totalOrders,totalBags,totalRevenue,pendingCount,verifiedCount,todayCount,pickedUpCount].forEach(el=>{if(el)el.textContent="—";});
+  unsubscribe=subscribeOrderSummaries(db,raw=>{
+    orders=Object.entries(raw).map(([id,value])=>({id,...value}))
+      .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+    orderListReady=true;dataControls.ready();renderAll();
+  },error=>{orderListReady=false;dataControls.error(error);},count=>dataControls.loading(count));
+  if(!unsubscribeConfig)unsubscribeConfig=onValue(ref(db,"systemConfig"),snap=>{
+    const config=snap.val()||{};
+    pickupOpen=config.pickupOpen===true;
+    pickupOpenedAt=config.pickupOpenedAt||null;
+    pickupOpenedBy=config.pickupOpenedBy||null;
     renderPickupControl();
-  });
-
-  if (unsubscribeSiteStats) unsubscribeSiteStats();
-  unsubscribeSiteStats = onValue(ref(db, "siteStats"), (snap) => {
-    renderSiteStats(snap.val() || {});
-  });
+  },error=>{console.warn("pickup config",error);globalPickupStatus.textContent="โหลดสถานะไม่สำเร็จ";});
+  // Subscribe to three scalar values, not the complete history of site visits.
+  if(!unsubscribeSiteStats){
+    const state={days:{[adminDateKey()]:{}}};
+    let dayTimer;
+    const stops=[
+      onValue(ref(db,"siteStats/pageViews"),snap=>{state.pageViews=snap.val();renderSiteStats(state);}),
+      onValue(ref(db,"siteStats/lastOpenedAt"),snap=>{state.lastOpenedAt=snap.val();renderSiteStats(state);}),
+      onValue(ref(db,`siteStats/days/${adminDateKey()}/pageViews`),snap=>{state.days[adminDateKey()]={pageViews:snap.val()};renderSiteStats(state);})
+    ];
+    unsubscribeSiteStats=()=>{clearTimeout(dayTimer);stops.forEach(stop=>stop());};
+    const midnight=new Date();midnight.setHours(24,0,0,0);
+    dayTimer=setTimeout(()=>{
+      unsubscribeSiteStats?.();unsubscribeSiteStats=null;
+      if(currentAdmin&&!document.hidden)subscribeOrders();
+    },Math.max(1000,midnight.getTime()-Date.now()+100));
+  }
 }
+async function rebuildOrderList(){
+  if(unsubscribe){unsubscribe();unsubscribe=null;}
+  orderListReady=false;dataControls.loading();
+  try{await prepareOrderIndex(db,count=>dataControls.loading(count),true);subscribeOrders();}
+  catch(error){dataControls.error(error);}
+}
+function stopAdminReads(){
+  if(unsubscribe){unsubscribe();unsubscribe=null;}
+  if(unsubscribeConfig){unsubscribeConfig();unsubscribeConfig=null;}
+  if(unsubscribeSiteStats){unsubscribeSiteStats();unsubscribeSiteStats=null;}
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden)stopAdminReads();
+  else if(currentAdmin&&!adminApp.classList.contains("hidden"))subscribeOrders();
+});
+window.addEventListener("pagehide",stopAdminReads);
+window.addEventListener("pageshow",event=>{if(event.persisted&&!document.hidden&&currentAdmin&&!adminApp.classList.contains("hidden"))subscribeOrders();});
 
 function adminDateKey(){
   const d=new Date();
@@ -344,7 +375,7 @@ function renderTable() {
 
   orderTableBody.innerHTML = "";
 
-  filtered.forEach((o) => {
+  dataControls.page(filtered).forEach((o) => {
     const c = o.customer || {};
     const d = toDate(o.createdAt);
 
@@ -352,7 +383,7 @@ function renderTable() {
 
     tr.innerHTML = `
       <td><strong>${escapeHTML(nameOf(o))}</strong><br><small>${escapeHTML(c.studentId || c.phone || "-")}</small></td>
-      <td>${o.buyerType === "teacher" ? "ครู" : "นักเรียน"}</td>
+      <td>${({student:"นักเรียน",teacher:"ครู",director:"ผอ."})[o.buyerType]||"-"}</td>
       <td>${c.level ? `${escapeHTML(c.level)} / ${escapeHTML(c.room || "-")}` : "-"}</td>
       <td>${Number(o.order?.quantity || 0)} ใบ</td>
       <td>${money(o.order?.totalAmount || 0)}</td>
@@ -368,10 +399,10 @@ function renderTable() {
   attachButtons();
 }
 
-searchInput.addEventListener("input", renderTable);
-statusFilter.addEventListener("change", renderTable);
-levelFilter.addEventListener("change", renderTable);
-refreshBtn.addEventListener("click", renderAll);
+searchInput.addEventListener("input",()=>{dataControls.resetPage();renderTable();});
+statusFilter.addEventListener("change",()=>{dataControls.resetPage();renderTable();});
+levelFilter.addEventListener("change",()=>{dataControls.resetPage();renderTable();});
+refreshBtn.addEventListener("click",()=>subscribeOrders());
 
 function attachButtons() {
   document.querySelectorAll("[data-id]").forEach((btn) => {
@@ -381,6 +412,7 @@ function attachButtons() {
 
 
 openPickupBtn.addEventListener("click", async () => {
+  if(!orderListReady)return showToast("กรุณารอโหลดรายการให้สำเร็จก่อน");
   const verified = orders.filter((order) =>
     statusOf(order) === "verified" &&
     (order.pickup?.status || "locked") !== "picked_up"
@@ -406,7 +438,7 @@ openPickupBtn.addEventListener("click", async () => {
 
   try {
     openPickupBtn.disabled = true;
-    await update(ref(db), updates);
+    await updateIndexedRoot(db, updates);
     showToast(`เปิดรับสินค้าแล้ว · พร้อมรับ ${verified.length} รายการ`);
   } catch (error) {
     console.error(error);
@@ -417,6 +449,7 @@ openPickupBtn.addEventListener("click", async () => {
 });
 
 closePickupBtn.addEventListener("click", async () => {
+  if(!orderListReady)return showToast("กรุณารอโหลดรายการให้สำเร็จก่อน");
   if (!confirm("ต้องการปิดการรับสินค้าชั่วคราวใช่หรือไม่?\nรายการที่รับไปแล้วจะไม่ถูกเปลี่ยน")) return;
 
   const updates = {
@@ -433,7 +466,7 @@ closePickupBtn.addEventListener("click", async () => {
 
   try {
     closePickupBtn.disabled = true;
-    await update(ref(db), updates);
+    await updateIndexedRoot(db, updates);
     showToast("ปิดการรับสินค้าแล้ว");
   } catch (error) {
     console.error(error);
@@ -443,12 +476,16 @@ closePickupBtn.addEventListener("click", async () => {
   }
 });
 
-function openDetail(id) {
-  const o = orders.find((x) => x.id === id);
-  if (!o) return;
-
-  selectedId = id;
-
+async function openDetail(id) {
+  if(!orders.some(order=>order.id===id))return;
+  const request=++detailRequest;
+  selectedId=id;
+  detailModal.classList.add("hidden");
+  let o;
+  try{o=await loadOrderDetail(db,id);}
+  catch(error){console.error(error);showToast("โหลดรายละเอียดไม่สำเร็จ กรุณาลองใหม่");return;}
+  if(request!==detailRequest||selectedId!==id)return;
+  if(!o){showToast("ไม่พบคำสั่งซื้อนี้");return;}
   const c = o.customer || {};
 
   dReference.textContent = o.referenceCode || "-";
@@ -459,7 +496,30 @@ function openDetail(id) {
   dContact.textContent = c.contact ? `${c.contact?.type === "instagram" ? "Instagram" : "Facebook"} · ${c.contact?.value || "-"}` : "-";
   dQuantity.textContent = `${Number(o.order?.quantity || 0)} ใบ`;
   dTotal.textContent = money(o.order?.totalAmount || 0);
-  dSlip.src = o.payment?.slipData || "";
+  // Old orders may still contain payment.slipData.
+  // New orders keep the large image under orderSlips/{orderId}, so the
+  // dashboard/table remains lightweight and the image is fetched on demand.
+  const oldSlip=o.payment?.slipData||"";
+  if(oldSlip){
+    dSlip.src=oldSlip;
+  }else{
+    dSlip.removeAttribute("src");
+    dSlip.alt="กำลังโหลดสลิป...";
+    try{
+      let slip=slipCache.get(o.id);
+      if(!slip){
+        const slipSnap=await get(ref(db,`orderSlips/${o.id}/data`));
+        slip=slipSnap.exists()?slipSnap.val():"";
+        if(slip) slipCache.set(o.id,slip);
+        if(request!==detailRequest||selectedId!==id)return;
+      }
+      dSlip.src=slip||"";
+      dSlip.alt=slip?"สลิปการชำระเงิน":"ไม่พบสลิป";
+    }catch(error){
+      console.error("load slip",error);
+      dSlip.alt="โหลดสลิปไม่สำเร็จ";
+    }
+  }
 
   const pickupStatus = o.pickup?.status || "locked";
   dPickupStatus.textContent = {
@@ -486,7 +546,7 @@ document.querySelectorAll("[data-status]").forEach((btn) => {
 
     const s = btn.dataset.status;
 
-    await update(ref(db, `preorders/${selectedId}`), {
+    await updateIndexedOrder(db, selectedId, {
       "payment/status": s,
       status: s === "verified" ? "payment_verified" : s === "rejected" ? "payment_issue" : "pending_review",
       reviewedAt: Date.now(),
@@ -515,9 +575,9 @@ setReadyBtn.addEventListener("click", async () => {
 
   if (!confirm(`ยืนยันให้ ${nameOf(order)} พร้อมรับสินค้าใช่หรือไม่?`)) return;
 
-  await update(ref(db, `preorders/${order.id}/pickup`), {
-    status: "ready",
-    code: order.pickup?.code || createPickupCode(order)
+  await updateIndexedOrder(db, order.id, {
+    "pickup/status": "ready",
+    "pickup/code": order.pickup?.code || createPickupCode(order)
   });
 
   detailModal.classList.add("hidden");
@@ -535,7 +595,7 @@ markPickedUpBtn.addEventListener("click", async () => {
 
   if (!confirm(`ยืนยันว่าได้มอบกระเป๋า ${Number(order.order?.quantity || 0)} ใบให้ ${nameOf(order)} แล้วใช่หรือไม่?`)) return;
 
-  await update(ref(db, `preorders/${order.id}`), {
+  await updateIndexedOrder(db, order.id, {
     "pickup/status": "picked_up",
     "pickup/pickedUpAt": Date.now(),
     "pickup/pickedUpBy": currentAdmin?.username || "admin",
@@ -552,9 +612,7 @@ lockPickupBtn.addEventListener("click", async () => {
 
   if (!confirm(`ต้องการล็อกการรับสินค้าของ ${nameOf(order)} ใช่หรือไม่?`)) return;
 
-  await update(ref(db, `preorders/${order.id}/pickup`), {
-    status: "locked"
-  });
+  await updateIndexedOrder(db, order.id, {"pickup/status": "locked"});
 
   detailModal.classList.add("hidden");
   showToast("ล็อกการรับสินค้าแล้ว");
