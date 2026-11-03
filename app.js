@@ -15,6 +15,11 @@ let studentSession=null,studentOrders=[],studentOrder=null,studentStep=1,student
 let teacherStep=1,teacherSlip=null,teacherSlipMeta=null,teacherOrders=[],teacherOrder=null,teacherLookupPhone="",teacherSubmitting=false,teacherSubmitCompleted=false;let lastFlow="";let pickupOpen=false;
 let currentScreen="landing";
 let studentOrdersUnsub=null,teacherOrdersUnsub=null,pickupConfigUnsub=null;
+const orderLoads={
+  student:{status:"idle",error:null,request:0,revision:0,subscription:0},
+  teacher:{status:"idle",error:null,request:0,revision:0,subscription:0}
+};
+const pickupConfigState={status:"idle",error:null};
 const STUDENT_SESSION_KEY="sckc_student_session_v1";
 const LAST_PORTAL_KEY="sckc_last_portal_v1";
 const TEACHER_SESSION_KEY="sckc_teacher_session_v1";
@@ -111,15 +116,159 @@ function updateNetworkBanner(){
   $("networkBanner")?.classList.toggle("hidden",!offline);
 }
 
+function loadErrorMessage(error){
+  const code=String(error?.code||error?.message||"").toLowerCase();
+  return code.includes("permission")
+    ? "ไม่สามารถเข้าถึงข้อมูลได้ กรุณาติดต่อผู้ดูแลระบบ"
+    : "โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง";
+}
+function orderIdentity(kind){
+  return String(kind==="student"?studentSession?.studentId||"":teacherLookupPhone||"");
+}
+function renderOrderViews(kind){
+  renderLoadFeedback(kind);
+  if(kind==="student"){
+    renderStudentHub();
+    if(currentScreen==="pickupScreen"){
+      renderStudentPickupOrders();
+      renderPickup();
+    }
+  }else{
+    renderTeacherHub();
+    if(currentScreen==="teacherPickupScreen"){
+      renderTeacherOrdersList();
+      $("teacherOrdersSection").classList.toggle("hidden",orderLoads.teacher.status!=="ready"||!teacherOrders.length);
+      renderTeacherPickupOrders();
+      renderTeacherPickup();
+    }
+  }
+}
+function renderLoadFeedback(kind){
+  const state=orderLoads[kind];
+  const orderIssue=state.status!=="ready";
+  const configIssue=pickupConfigState.status!=="ready";
+  const isError=orderIssue?state.status==="error":pickupConfigState.status==="error";
+  const error=orderIssue?state.error:pickupConfigState.error;
+  document.querySelectorAll(`[data-order-feedback="${kind}"]`).forEach(panel=>{
+    panel.classList.toggle("hidden",!orderIssue&&!configIssue);
+    panel.querySelector("[data-load-message]").textContent=isError?loadErrorMessage(error):"กำลังโหลดข้อมูล กรุณารอสักครู่…";
+    const retry=panel.querySelector("button");
+    retry.classList.toggle("hidden",!isError);
+    retry.disabled=state.status==="loading"||pickupConfigState.status==="loading";
+  });
+}
+function setupOrderLoadFeedback(){
+  [["student","#studentHub .hub-shell"],["student","#pickupScreen .pickup-shell"],
+   ["teacher","#teacherHubScreen .hub-shell"],["teacher","#teacherPickupScreen .pickup-shell"]].forEach(([kind,selector])=>{
+    const host=document.querySelector(selector);
+    if(!host)return;
+    const panel=document.createElement("div");
+    panel.className="order-load-feedback hidden";
+    panel.dataset.orderFeedback=kind;
+    panel.setAttribute("role","status");
+    panel.setAttribute("aria-live","polite");
+    panel.innerHTML='<span data-load-message></span><button type="button">ลองโหลดใหม่</button>';
+    panel.querySelector("button").addEventListener("click",async()=>{
+      const identity=orderIdentity(kind);
+      if(!identity)return;
+      panel.querySelector("button").disabled=true;
+      await Promise.all([refreshPickupAvailability(),refreshCustomerOrders(kind,identity)]);
+      if(orderIdentity(kind)!==identity)return;
+      if(kind==="student")subscribeStudentRealtime();
+      else subscribeTeacherRealtime(identity);
+      subscribePickupConfigRealtime();
+    });
+    host.prepend(panel);
+  });
+}
+function commitCustomerOrders(kind,snapshot,identity){
+  const field=kind==="student"?"studentId":"phone";
+  const list=sortOrders(Object.entries(snapshot.val()||{})
+    .map(([id,value])=>({id,...value}))
+    .filter(order=>(kind==="teacher"?order.buyerType==="teacher":order.buyerType!=="teacher")
+      &&String(order.customer?.[field]||"")===identity));
+  if(kind==="student"){
+    const selectedId=studentOrder?.id;
+    studentOrders=list;
+    studentOrder=list.find(order=>order.id===selectedId)||list[0]||null;
+  }else{
+    const selectedId=teacherOrder?.id;
+    teacherOrders=list;
+    teacherOrder=list.find(order=>order.id===selectedId)||list[0]||null;
+  }
+  orderLoads[kind].status="ready";
+  orderLoads[kind].error=null;
+}
+async function refreshCustomerOrders(kind,identity){
+  identity=String(identity||"");
+  if(!identity||orderIdentity(kind)!==identity)return false;
+  const state=orderLoads[kind],request=++state.request,revision=state.revision;
+  state.status="loading";
+  state.error=null;
+  renderOrderViews(kind);
+  const isCurrent=()=>orderIdentity(kind)===identity&&request===state.request;
+  try{
+    const field=kind==="student"?"studentId":"phone";
+    const snapshot=await get(query(ref(db,"preorders"),orderByChild(`customer/${field}`),equalTo(identity)));
+    if(!isCurrent())return false;
+    // A newer realtime result takes priority over an in-flight one-off read.
+    if(revision!==state.revision)return state.status==="ready";
+    commitCustomerOrders(kind,snapshot,identity);
+    renderOrderViews(kind);
+    return true;
+  }catch(error){
+    if(!isCurrent())return false;
+    if(revision!==state.revision)return state.status==="ready";
+    console.error("Unable to load orders",error);
+    // Keep any cached records, but do not present them as a confirmed result.
+    state.status="error";
+    state.error=error;
+    renderOrderViews(kind);
+    return false;
+  }
+}
 async function refreshPickupAvailability(){
+  pickupConfigState.status="loading";
+  pickupConfigState.error=null;
   try{
     const snap=await get(ref(db,"systemConfig/pickupOpen"));
-    pickupOpen=snap.exists() && snap.val()===true;
+    pickupOpen=snap.exists()&&snap.val()===true;
+    pickupConfigState.status="ready";
   }catch(error){
     console.warn("Unable to load pickup availability",error);
-    pickupOpen=false;
+    pickupConfigState.status="error";
+    pickupConfigState.error=error;
   }
-  return pickupOpen;
+  if(studentSession)renderOrderViews("student");
+  if(teacherLookupPhone)renderOrderViews("teacher");
+  return pickupConfigState.status==="ready"&&pickupOpen;
+}
+function renderPickupLoadState(kind){
+  const state=orderLoads[kind];
+  if(state.status==="ready")return false;
+  const student=kind==="student";
+  const prefix=student?"pickup":"teacherPickup";
+  $(prefix+"ReadyPanel").classList.add("hidden");
+  $(prefix+"StatusHero").className="pickup-status-hero waiting-status";
+  $(prefix+"HeroIcon").textContent=state.status==="error"?"!":"⌛";
+  $(prefix+"HeroTitle").textContent=state.status==="error"?"โหลดข้อมูลไม่สำเร็จ":"กำลังโหลดคำสั่งซื้อ";
+  $(prefix+"HeroText").textContent=state.status==="error"?loadErrorMessage(state.error):"กรุณารอสักครู่…";
+  $(prefix+"FinanceStatus").textContent="ยังตรวจสอบไม่ได้";
+  const fields=student?["StudentClass","StudentPhone","OrderRef","Qty","Amount"]:["Phone","OrderRef","Qty","Amount"];
+  fields.forEach(field=>$(prefix+field).textContent="—");
+  if(student){
+    $("pickupStudentId").textContent=studentSession?.studentId||"-";
+    $("pickupStudentName").textContent="รอโหลดข้อมูลผู้สั่งซื้อ";
+  }else $("teacherPickupName").textContent="รอโหลดข้อมูลผู้สั่งซื้อ";
+  return true;
+}
+function renderPickupConfigIssue(prefix){
+  if(pickupConfigState.status==="ready")return false;
+  $(prefix+"HeroIcon").textContent=pickupConfigState.status==="error"?"!":"⌛";
+  $(prefix+"HeroTitle").textContent=pickupConfigState.status==="error"?"โหลดสถานะการรับสินค้าไม่สำเร็จ":"กำลังตรวจสอบสถานะการรับสินค้า";
+  $(prefix+"HeroText").textContent=pickupConfigState.status==="error"?loadErrorMessage(pickupConfigState.error):"กรุณารอสักครู่…";
+  $(prefix+"FinanceStatus").textContent="ชำระเงินผ่านแล้ว";
+  return true;
 }
 
 window.addEventListener("online",()=>{
@@ -164,6 +313,7 @@ function saveStudentSession(){
 }
 
 function clearStudentSession(){
+  Object.assign(orderLoads.student,{status:"idle",error:null,request:orderLoads.student.request+1,subscription:orderLoads.student.subscription+1});
   localStorage.removeItem(STUDENT_SESSION_KEY);
   if(localStorage.getItem(LAST_PORTAL_KEY)==="student")localStorage.removeItem(LAST_PORTAL_KEY);
   if(studentOrdersUnsub){studentOrdersUnsub();studentOrdersUnsub=null;}
@@ -176,6 +326,7 @@ function saveTeacherSession(phone){
 }
 
 function clearTeacherSession(){
+  Object.assign(orderLoads.teacher,{status:"idle",error:null,request:orderLoads.teacher.request+1,subscription:orderLoads.teacher.subscription+1});
   localStorage.removeItem(TEACHER_SESSION_KEY);
   if(localStorage.getItem(LAST_PORTAL_KEY)==="teacher")localStorage.removeItem(LAST_PORTAL_KEY);
   if(teacherOrdersUnsub){teacherOrdersUnsub();teacherOrdersUnsub=null;}
@@ -202,75 +353,45 @@ function subscribePickupConfigRealtime(){
   if(pickupConfigUnsub)pickupConfigUnsub();
   pickupConfigUnsub=onValue(ref(db,"systemConfig/pickupOpen"),snap=>{
     pickupOpen=snap.exists()&&snap.val()===true;
-
-    if(studentSession){
-      renderStudentHub();
-      if(currentScreen==="pickupScreen"&&studentOrder)renderPickup();
-    }
-
-    if(teacherLookupPhone){
-      renderTeacherHub();
-      if(currentScreen==="teacherPickupScreen"&&teacherOrder)renderTeacherPickup();
-    }
-  },err=>console.warn("pickup realtime",err));
+    pickupConfigState.status="ready";
+    pickupConfigState.error=null;
+    if(studentSession)renderOrderViews("student");
+    if(teacherLookupPhone)renderOrderViews("teacher");
+  },error=>{
+    console.warn("pickup realtime",error);
+    pickupConfigState.status="error";
+    pickupConfigState.error=error;
+    if(studentSession)renderOrderViews("student");
+    if(teacherLookupPhone)renderOrderViews("teacher");
+  });
 }
-
+function subscribeCustomerRealtime(kind,identity){
+  const state=orderLoads[kind],subscription=++state.subscription;
+  const field=kind==="student"?"studentId":"phone";
+  const isCurrent=()=>orderIdentity(kind)===identity&&state.subscription===subscription;
+  return onValue(query(ref(db,"preorders"),orderByChild(`customer/${field}`),equalTo(identity)),snap=>{
+    if(!isCurrent())return;
+    state.revision++;
+    commitCustomerOrders(kind,snap,identity);
+    renderOrderViews(kind);
+  },error=>{
+    if(!isCurrent())return;
+    console.warn(kind+" realtime",error);
+    state.revision++;
+    state.status="error";
+    state.error=error;
+    renderOrderViews(kind);
+  });
+}
 function subscribeStudentRealtime(){
   if(studentOrdersUnsub)studentOrdersUnsub();
   if(!studentSession)return;
-
-  const qy=query(
-    ref(db,"preorders"),
-    orderByChild("customer/studentId"),
-    equalTo(studentSession.studentId)
-  );
-
-  studentOrdersUnsub=onValue(qy,snap=>{
-    studentOrders=sortOrders(
-      Object.entries(snap.val()||{})
-        .map(([id,v])=>({id,...v}))
-        .filter(o=>o.buyerType!=="teacher")
-    );
-
-    const selectedId=studentOrder?.id;
-    studentOrder=studentOrders.find(o=>o.id===selectedId)||studentOrders[0]||null;
-
-    renderStudentHub();
-    if(currentScreen==="pickupScreen"){
-      renderStudentOrdersList();
-      renderStudentPickupOrders();
-      renderPickup();
-    }
-  },err=>console.warn("student realtime",err));
+  studentOrdersUnsub=subscribeCustomerRealtime("student",orderIdentity("student"));
 }
-
 function subscribeTeacherRealtime(phone){
   if(teacherOrdersUnsub)teacherOrdersUnsub();
   if(!phone)return;
-
-  const qy=query(
-    ref(db,"preorders"),
-    orderByChild("customer/phone"),
-    equalTo(phone)
-  );
-
-  teacherOrdersUnsub=onValue(qy,snap=>{
-    teacherOrders=sortOrders(
-      Object.entries(snap.val()||{})
-        .map(([id,v])=>({id,...v}))
-        .filter(o=>o.buyerType==="teacher")
-    );
-
-    const selectedId=teacherOrder?.id;
-    teacherOrder=teacherOrders.find(o=>o.id===selectedId)||teacherOrders[0]||null;
-
-    renderTeacherHub();
-    if(currentScreen==="teacherPickupScreen"){
-      renderTeacherOrdersList();
-      renderTeacherPickupOrders();
-      renderTeacherPickup();
-    }
-  },err=>console.warn("teacher realtime",err));
+  teacherOrdersUnsub=subscribeCustomerRealtime("teacher",String(phone));
 }
 
 async function restorePersistentLogin(){
@@ -350,6 +471,7 @@ $("studentLoginForm").addEventListener("submit",async e=>{
     return;
   }
 
+  studentOrders=[];studentOrder=null;
   studentSession={
     studentId:id,
     type:id.length===5?"secondary":"vocational"
@@ -421,21 +543,24 @@ function closeTeacherDrawer(){$("teacherSummaryDrawer").classList.remove("open")
 
 // Pickup detailed
 $("pickupCard").addEventListener("click",async()=>{
-  await refreshPickupAvailability();
-  renderStudentPickupOrders();
-  if(studentOrders.length){
-    studentOrder=studentOrders[0];
-  }else{
-    studentOrder=null;
-  }
-  renderPickup();
+  await Promise.all([refreshPickupAvailability(),refreshStudentOrder()]);
   showScreen("pickupScreen");
+  renderOrderViews("student");
 });
-function renderPickup(){const o=studentOrder,c=o?.customer||{},status=o?.payment?.status||"none";$("pickupStudentId").textContent=studentSession?.studentId||"-";$("pickupStudentName").textContent=o?`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim():"ยังไม่มีข้อมูลผู้สั่งซื้อ";$("pickupStudentClass").textContent=o?`${c.level||"-"} / ห้อง ${c.room||"-"}`:"-";$("pickupStudentPhone").textContent=c.phone||"-";$("pickupOrderRef").textContent=o?.referenceCode||"-";$("pickupQty").textContent=o?`${o.order?.quantity||0} ใบ`:"-";$("pickupAmount").textContent=o?money(o.order?.totalAmount):"-";const hero=$("pickupStatusHero");$("pickupReadyPanel").classList.add("hidden");hero.className="pickup-status-hero waiting-status";
+
+function renderPickup(){renderLoadFeedback("student");if(renderPickupLoadState("student"))return;const o=studentOrder,c=o?.customer||{},status=o?.payment?.status||"none";$("pickupStudentId").textContent=studentSession?.studentId||"-";$("pickupStudentName").textContent=o?`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim():"ยังไม่มีข้อมูลผู้สั่งซื้อ";$("pickupStudentClass").textContent=o?`${c.level||"-"} / ห้อง ${c.room||"-"}`:"-";$("pickupStudentPhone").textContent=c.phone||"-";$("pickupOrderRef").textContent=o?.referenceCode||"-";$("pickupQty").textContent=o?`${o.order?.quantity||0} ใบ`:"-";$("pickupAmount").textContent=o?money(o.order?.totalAmount):"-";const hero=$("pickupStatusHero");$("pickupReadyPanel").classList.add("hidden");hero.className="pickup-status-hero waiting-status";
   if(!o){$("pickupHeroIcon").textContent="!";$("pickupHeroTitle").textContent="ยังไม่ได้พรีออเดอร์";$("pickupHeroText").textContent="ต้องพรีออเดอร์กระเป๋าให้เรียบร้อยก่อนจึงจะใช้ฟังก์ชันการรับกระเป๋าได้";$("pickupFinanceStatus").textContent="ยังไม่มีรายการ";return;}
   if(status==="pending"){$("pickupHeroIcon").textContent="⌛";$("pickupHeroTitle").textContent="รอฝ่ายการเงินตรวจสอบ";$("pickupHeroText").textContent="ได้รับคำสั่งซื้อและสลิปแล้ว ฝ่ายการเงินกำลังตรวจสอบยอดกับบัญชีธนาคาร";$("pickupFinanceStatus").textContent="รอตรวจสอบ";return;}
   if(status==="rejected"){hero.className="pickup-status-hero rejected-status";$("pickupHeroIcon").textContent="!";$("pickupHeroTitle").textContent="การชำระเงินมีปัญหา";$("pickupHeroText").textContent=o.payment?.financeNote||"ฝ่ายการเงินไม่สามารถยืนยันการชำระเงินได้ กรุณาติดต่อฝ่ายการเงิน";$("pickupFinanceStatus").textContent="มีปัญหา";return;}
+  if(status!=="verified"){
+    $("pickupHeroIcon").textContent="!";
+    $("pickupHeroTitle").textContent="ยังยืนยันสถานะการชำระเงินไม่ได้";
+    $("pickupHeroText").textContent="กรุณาติดต่อฝ่ายการเงินเพื่อตรวจสอบคำสั่งซื้อนี้";
+    $("pickupFinanceStatus").textContent="รอตรวจสอบข้อมูล";
+    return;
+  }
   if((o.pickup?.status||"")==="picked_up"){hero.className="pickup-status-hero verified-status";$("pickupHeroIcon").textContent="✓";$("pickupHeroTitle").textContent="รับสินค้าเรียบร้อยแล้ว";$("pickupHeroText").textContent=`รับกระเป๋าแล้ว${o.pickup?.pickedUpAt?` เมื่อ ${orderDate(o.pickup.pickedUpAt)}`:""}`;$("pickupFinanceStatus").textContent="เสร็จสิ้น";return;}
+  if(renderPickupConfigIssue("pickup"))return;
   if(!pickupOpen || (o.pickup?.status||"locked")!=="ready"){
     $("pickupHeroIcon").textContent="⌛";
     $("pickupHeroTitle").textContent="ยังไม่เปิดรับสินค้า";
@@ -447,52 +572,23 @@ function renderPickup(){const o=studentOrder,c=o?.customer||{},status=o?.payment
 }
 
 async function refreshStudentOrder(){
-  studentOrders=[];
-  studentOrder=null;
-
-  try{
-    // โหลดเฉพาะออเดอร์ของรหัสนักเรียนนี้ก่อน เพื่อลดการดาวน์โหลดข้อมูลทั้งหมด
-    const qy=query(
-      ref(db,"preorders"),
-      orderByChild("customer/studentId"),
-      equalTo(studentSession.studentId)
-    );
-    const snap=await get(qy);
-
-    if(snap.exists()){
-      studentOrders=sortOrders(
-        Object.entries(snap.val())
-          .map(([id,v])=>({id,...v}))
-          .filter(o=>o.buyerType!=="teacher")
-      );
-    }
-
-    studentOrder=studentOrders[0]||null;
-  }catch(e){
-    console.warn("Indexed student query failed, using fallback.",e);
-
-    // fallback สำหรับกรณี Rules/Index ยังไม่ได้อัปเดต
-    try{
-      const snap=await get(ref(db,"preorders"));
-      const all=Object.entries(snap.val()||{}).map(([id,v])=>({id,...v}));
-
-      studentOrders=sortOrders(
-        all.filter(o=>
-          o.buyerType!=="teacher" &&
-          String(o.customer?.studentId||"")===String(studentSession.studentId)
-        )
-      );
-      studentOrder=studentOrders[0]||null;
-    }catch(fallbackError){
-      console.error(fallbackError);
-      toast("โหลดข้อมูลพรีออเดอร์ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือ Firebase Rules","error");
-    }
-  }
-
-  renderStudentHub();
+  return refreshCustomerOrders("student",orderIdentity("student"));
 }
+
 function renderStudentHub(){
+  renderLoadFeedback("student");
   const section=$("studentOrdersSection");
+  if(orderLoads.student.status!=="ready"){
+    section.classList.add("hidden");
+    ["studentStatTotal","studentStatPending","studentStatReady"].forEach(id=>$(id).textContent="—");
+    $("studentOrdersCount").textContent="ยังตรวจสอบไม่ได้";
+    $("preorderStatusBadge").textContent="ยังตรวจสอบรายการไม่ได้";
+    $("pickupStatusBadge").className="status-pill pending";
+    $("pickupStatusBadge").textContent=orderLoads.student.status==="error"?"โหลดข้อมูลไม่สำเร็จ":"กำลังโหลดข้อมูล";
+    $("pickupCard").classList.remove("locked");
+    $("pickupCardText").textContent="แตะเพื่อโหลดข้อมูลและตรวจสอบสถานะอีกครั้ง";
+    return;
+  }
   const latestCustomer=studentOrders[0]?.customer||null;
   const studentName=latestCustomer
     ? `${latestCustomer.prefix||""}${latestCustomer.firstName||""} ${latestCustomer.lastName||""}`.trim()
@@ -538,6 +634,14 @@ function renderStudentHub(){
   $("preorderStatusBadge").className="status-pill neutral";
   $("preorderStatusBadge").textContent=`มี ${studentOrders.length} คำสั่งซื้อ · พรีออเดอร์เพิ่มได้`;
 
+  if(pickupConfigState.status!=="ready")$("studentStatReady").textContent="—";
+  if(verifiedCount>0 && pickupConfigState.status!=="ready"){
+    $("pickupCard").classList.remove("locked");
+    $("pickupStatusBadge").className="status-pill pending";
+    $("pickupStatusBadge").textContent="ยังตรวจสอบสถานะรับสินค้าไม่ได้";
+    $("pickupCardText").textContent="ชำระเงินผ่านแล้ว · กรุณาลองโหลดสถานะการรับสินค้าใหม่";
+    return;
+  }
   if(verifiedCount>0 && pickupOpen){
     const readyCount=studentOrders.filter(o=>(o.pickup?.status||"locked")==="ready").length;
     $("pickupCard").classList.remove("locked");
@@ -586,6 +690,7 @@ function renderStudentOrdersList(){
 }
 
 function renderStudentPickupOrders(){
+  if(orderLoads.student.status!=="ready"){$("studentPickupOrderSelector").classList.add("hidden");return;}
   const box=$("studentPickupOrderSelector");
   $("studentPickupOrderCount").textContent=`${studentOrders.length} รายการ`;
   if(studentOrders.length<=1){
@@ -661,6 +766,7 @@ $("studentOrderForm").addEventListener("submit",async e=>{
     const localOrder={id:r.key,...data,createdAt:Date.now()};
     studentOrders=sortOrders([localOrder,...studentOrders.filter(o=>o.id!==r.key)]);
     studentOrder=localOrder;
+    orderLoads.student.status="ready";orderLoads.student.error=null;
     renderStudentHub();
 
     localStorage.removeItem(STUDENT_DRAFT_KEY);
@@ -716,68 +822,26 @@ function startTeacherOrder(){
 }
 
 $("teacherPickupCard").addEventListener("click",async()=>{
-  await refreshPickupAvailability();
-
-  if(teacherLookupPhone){
-    await refreshTeacherOrder(teacherLookupPhone);
-  }
-
-  teacherOrder=teacherOrders[0]||null;
-  renderTeacherOrdersList();
-  $("teacherOrdersSection").classList.toggle("hidden",teacherOrders.length===0);
-  renderTeacherPickupOrders();
-  renderTeacherPickup();
+  await Promise.all([refreshPickupAvailability(),refreshTeacherOrder(teacherLookupPhone)]);
   showScreen("teacherPickupScreen");
+  renderOrderViews("teacher");
 });
 
-async function loadAllPreorders(){
-  const snap=await get(ref(db,"preorders"));
-  return Object.entries(snap.val()||{}).map(([id,v])=>({id,...v}));
-}
-
 async function refreshTeacherOrder(phone){
-  teacherOrders=[];
-  teacherOrder=null;
-
-  try{
-    const qy=query(
-      ref(db,"preorders"),
-      orderByChild("customer/phone"),
-      equalTo(phone)
-    );
-    const snap=await get(qy);
-
-    if(snap.exists()){
-      teacherOrders=sortOrders(
-        Object.entries(snap.val())
-          .map(([id,v])=>({id,...v}))
-          .filter(o=>o.buyerType==="teacher")
-      );
-    }
-
-    teacherOrder=teacherOrders[0]||null;
-  }catch(e){
-    console.warn("Indexed teacher query failed, using fallback.",e);
-
-    try{
-      const all=await loadAllPreorders();
-      teacherOrders=sortOrders(
-        all.filter(o=>
-          o.buyerType==="teacher" &&
-          String(o.customer?.phone||"")===String(phone)
-        )
-      );
-      teacherOrder=teacherOrders[0]||null;
-    }catch(fallbackError){
-      console.error(fallbackError);
-      toast("ไม่สามารถโหลดคำสั่งซื้อได้ กรุณาตรวจสอบอินเทอร์เน็ตหรือ Firebase Rules","error");
-    }
-  }
-
-  renderTeacherHub();
+  return refreshCustomerOrders("teacher",String(phone||""));
 }
 
 function renderTeacherHub(){
+  renderLoadFeedback("teacher");
+  if(orderLoads.teacher.status!=="ready"){
+    $("teacherOrdersSection").classList.add("hidden");
+    ["teacherStatTotal","teacherStatPending","teacherStatReady"].forEach(id=>$(id).textContent="—");
+    $("teacherPreorderStatusBadge").textContent="ยังตรวจสอบรายการไม่ได้";
+    $("teacherPickupStatusBadge").className="status-pill pending";
+    $("teacherPickupStatusBadge").textContent=orderLoads.teacher.status==="error"?"โหลดข้อมูลไม่สำเร็จ":"กำลังโหลดข้อมูล";
+    $("teacherPickupCardText").textContent="แตะเพื่อโหลดข้อมูลและตรวจสอบสถานะอีกครั้ง";
+    return;
+  }
   const latestCustomer=teacherOrders[0]?.customer||null;
   const teacherName=latestCustomer
     ? `${latestCustomer.prefix||""}${latestCustomer.firstName||""} ${latestCustomer.lastName||""}`.trim()
@@ -822,6 +886,14 @@ function renderTeacherHub(){
 
   $("teacherPickupCard").classList.remove("locked");
 
+  if(pickupConfigState.status!=="ready")$("teacherStatReady").textContent="—";
+  if(verifiedCount>0 && pickupConfigState.status!=="ready"){
+    $("teacherPickupCard").classList.remove("locked");
+    $("teacherPickupStatusBadge").className="status-pill pending";
+    $("teacherPickupStatusBadge").textContent="ยังตรวจสอบสถานะรับสินค้าไม่ได้";
+    $("teacherPickupCardText").textContent="ชำระเงินผ่านแล้ว · กรุณาลองโหลดสถานะการรับสินค้าใหม่";
+    return;
+  }
   if(verifiedCount>0 && pickupOpen){
     const readyCount=teacherOrders.filter(o=>(o.pickup?.status||"locked")==="ready").length;
     $("teacherPickupStatusBadge").className="status-pill verified";
@@ -867,6 +939,7 @@ function renderTeacherOrdersList(){
 }
 
 function renderTeacherPickupOrders(){
+  if(orderLoads.teacher.status!=="ready"){$("teacherPickupOrderSelector").classList.add("hidden");return;}
   const box=$("teacherPickupOrderSelector");
   $("teacherPickupOrderCount").textContent=`${teacherOrders.length} รายการ`;
   if(teacherOrders.length<=1){
@@ -895,6 +968,8 @@ function renderTeacherPickupOrders(){
 }
 
 function renderTeacherPickup(){
+  renderLoadFeedback("teacher");
+  if(renderPickupLoadState("teacher"))return;
   const o=teacherOrder,c=o?.customer||{},status=o?.payment?.status||"none";
   $("teacherPickupName").textContent=o?`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim():"-";
   $("teacherPickupPhone").textContent=c.phone||"-";
@@ -931,7 +1006,15 @@ function renderTeacherPickup(){
     return;
   }
 
+  if(status!=="verified"){
+    $("teacherPickupHeroIcon").textContent="!";
+    $("teacherPickupHeroTitle").textContent="ยังยืนยันสถานะการชำระเงินไม่ได้";
+    $("teacherPickupHeroText").textContent="กรุณาติดต่อฝ่ายการเงินเพื่อตรวจสอบคำสั่งซื้อนี้";
+    $("teacherPickupFinanceStatus").textContent="รอตรวจสอบข้อมูล";
+    return;
+  }
   if((o.pickup?.status||"")==="picked_up"){hero.className="pickup-status-hero verified-status";$("teacherPickupHeroIcon").textContent="✓";$("teacherPickupHeroTitle").textContent="รับสินค้าเรียบร้อยแล้ว";$("teacherPickupHeroText").textContent=`รับกระเป๋าแล้ว${o.pickup?.pickedUpAt?` เมื่อ ${orderDate(o.pickup.pickedUpAt)}`:""}`;$("teacherPickupFinanceStatus").textContent="เสร็จสิ้น";return;}
+  if(renderPickupConfigIssue("teacherPickup"))return;
   if(!pickupOpen || (o.pickup?.status||"locked")!=="ready"){
     $("teacherPickupHeroIcon").textContent="⌛";
     $("teacherPickupHeroTitle").textContent="ยังไม่เปิดรับสินค้า";
@@ -997,6 +1080,7 @@ $("teacherLoginForm").addEventListener("submit",async e=>{
     return toast("กรุณากรอกเบอร์โทร 9–10 หลัก","error");
   }
 
+  if(teacherLookupPhone!==phone){teacherOrders=[];teacherOrder=null;}
   teacherLookupPhone=phone;
   saveTeacherSession(phone);
   setLoading(true,"กำลังเข้าสู่ระบบสำหรับครู...");
@@ -1190,6 +1274,7 @@ $("teacherForm").addEventListener("submit",async e=>{
     const localOrder={id:r.key,...data,createdAt:Date.now()};
     teacherOrders=sortOrders([localOrder,...teacherOrders.filter(o=>o.id!==r.key)]);
     teacherOrder=localOrder;
+    orderLoads.teacher.status="ready";orderLoads.teacher.error=null;
     renderTeacherHub();
     lastFlow="teacher";
 
@@ -1304,6 +1389,8 @@ $("successClose").addEventListener("click",()=>{
 });
 setTeacherQty(1);
 
+
+setupOrderLoadFeedback();
 
 // Restore persistent student login / remembered teacher phone after page setup.
 window.addEventListener("DOMContentLoaded",()=>{

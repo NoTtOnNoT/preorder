@@ -1851,3 +1851,9 @@ label select{
 .brand-group .eyebrow {
   margin-top: 8px;
 }
+/* Persistent feedback for failed order/config reads. */
+.order-load-feedback{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;margin:0 0 16px;border:1px solid #ead6a8;border-radius:18px;background:#fff9eb;color:#6b4d12;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.order-load-feedback.hidden,.order-load-feedback .hidden{display:none!important}
+.order-load-feedback button{flex-shrink:0;padding:9px 14px;border:1px solid #ddbd7a;border-radius:12px;background:#fff;color:#6b4d12;font:inherit;cursor:pointer}
+.order-load-feedback button:disabled{opacity:.6;cursor:wait}
+@media(max-width:520px){.order-load-feedback{align-items:flex-start;flex-direction:column}.order-load-feedback button{align-self:flex-end}}
