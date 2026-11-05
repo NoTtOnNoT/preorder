@@ -7,7 +7,7 @@
   <link rel="icon" href="./favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./admin.css">
-<link rel="stylesheet" href="./order-usage.css?v=20261103-complete3"></head>
+<link rel="stylesheet" href="./order-usage.css?v=20261103-complete3"><link rel="stylesheet" href="./pickup-qr.css?v=20261105-qr1"></head>
 <body>
   <section id="loginScreen" class="login-screen">
     <div class="login-card">
@@ -37,7 +37,7 @@
     <main class="admin-main">
       <header>
         <div><span>ADMIN DASHBOARD</span><h1 id="pageTitle">ภาพรวมพรีออเดอร์</h1></div>
-        <button id="refreshBtn">รีเฟรช</button>
+        <div class="admin-scan-actions"><button id="openQrScanner" class="scan-open-button" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 7h3v3H7zm7 0h3v3h-3zM7 14h3v3H7zm7 0h3v3h-3z"/></svg>สแกน QR รับกระเป๋า</button><button id="refreshBtn">รีเฟรช</button></div>
       </header>
 
       <section id="dashboardView" class="view active">
@@ -127,7 +127,7 @@
     <div class="modal-bg" data-close></div>
     <div class="detail-card">
       <button class="close" data-close>×</button>
-      <h2>รายละเอียดคำสั่งซื้อ</h2>
+      <h2>รายละเอียดคำสั่งซื้อ</h2><div id="detailScanNotice" class="detail-scan-notice" role="status" hidden></div>
       <div class="detail-grid">
         <div><span>เลขอ้างอิง</span><strong id="dReference">-</strong></div>
         <div><span>รหัสนักเรียน</span><strong id="dStudentId">-</strong></div>
@@ -137,6 +137,13 @@
         <div><span>ช่องทาง</span><strong id="dContact">-</strong></div>
         <div><span>จำนวน</span><strong id="dQuantity">-</strong></div>
         <div><span>ยอด</span><strong id="dTotal">-</strong></div>
+        <div><span>ประเภทผู้ซื้อ</span><strong id="dBuyerType">-</strong></div>
+        <div><span>วันที่สั่งซื้อ</span><strong id="dOrderDate">-</strong></div>
+        <div><span>สถานะการเงิน</span><strong id="dPaymentStatus">-</strong></div>
+        <div><span>เลขอ้างอิงธนาคาร</span><strong id="dBankReference">-</strong></div>
+        <div class="detail-wide"><span>หมายเหตุฝ่ายการเงิน</span><strong id="dFinanceNote">-</strong></div>
+        <div class="detail-wide"><span>ตรวจการเงินโดย / เมื่อ</span><strong id="dReviewed">-</strong></div>
+        <div class="detail-wide"><span>รับกระเป๋าโดย / เมื่อ</span><strong id="dPickedUpInfo">-</strong></div>
       </div>
 
       <img id="dSlip" class="admin-slip" alt="สลิป">
@@ -156,13 +163,28 @@
       </div>
       <div class="pickup-admin-actions">
         <button id="setReadyBtn" type="button">พร้อมรับ</button>
-        <button id="markPickedUpBtn" type="button">ยืนยันว่ารับแล้ว</button>
+        <button id="markPickedUpBtn" type="button">ยืนยันรับกระเป๋า</button>
         <button id="lockPickupBtn" type="button">ล็อกการรับ</button>
       </div>
+      <div id="detailPickupMessage" class="pickup-detail-message" role="status" aria-live="polite"></div>
+      <button id="scanNextOrderBtn" class="scan-next-button" type="button">สแกนคนถัดไป</button>
     </div>
   </div>
 
+
+  <div id="pickupScannerModal" class="pickup-scan-modal hidden">
+    <section class="pickup-scan-dialog" role="dialog" aria-modal="true" aria-labelledby="pickupScannerTitle">
+      <div class="pickup-scan-heading"><div><span>ORDER CHECK &amp; PICKUP</span><h2 id="pickupScannerTitle">สแกน QR รับกระเป๋า</h2></div><button id="pickupScannerClose" type="button" aria-label="ปิดหน้าสแกน">×</button></div>
+      <p class="pickup-scan-help">สแกนเพื่อเปิดข้อมูลผู้ซื้อ ตรวจชื่อและจำนวน แล้วกดยืนยันรับกระเป๋าในหน้ารายละเอียด</p>
+      <div class="pickup-camera-wrap"><video id="pickupScannerVideo" autoplay muted playsinline></video><div class="pickup-camera-guide" aria-hidden="true"></div></div>
+      <div id="pickupScannerMessage" class="pickup-scan-message" role="status" aria-live="polite">พร้อมสแกน QR</div>
+      <div class="pickup-camera-actions"><button id="pickupCameraStart" type="button">เปิดกล้อง</button><button id="pickupCameraFlip" type="button">สลับกล้อง</button><button id="pickupCameraStop" type="button" disabled>ปิดกล้อง</button></div>
+      <label class="pickup-file-label" for="pickupQrFile">เลือกรูป QR จากเครื่อง</label><input id="pickupQrFile" type="file" accept="image/*">
+      <form id="pickupQrManualForm" class="pickup-manual"><label for="pickupQrManual">สแกนเนอร์ USB / ข้อความ QR / เลขคำสั่งซื้อ / รหัสรับสินค้า</label><div><input id="pickupQrManual" autocomplete="off" spellcheck="false" placeholder="วางข้อความ QR หรือกรอกรหัส"><button type="submit">เปิดคำสั่งซื้อ</button></div></form>
+    </section>
+  </div>
+
   <div id="toastContainer"></div>
-  <script type="module" src="./admin.js?v=20261103-complete3"></script>
+  <script type="module" src="./admin.js?v=20261105-qr1"></script>
 </body>
 </html>

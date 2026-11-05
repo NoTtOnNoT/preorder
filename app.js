@@ -1,3 +1,4 @@
+import { createPickupQrCard } from "./pickup-qr.js?v=20261105-qr1";
 import { customerOrderPath, indexedRootUpdates } from "./order-data.js?v=20261103-complete3";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, push, set, update, query, orderByChild, equalTo, serverTimestamp, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
@@ -364,6 +365,7 @@ function saveStudentSession(){
 }
 
 function clearStudentSession(){
+  studentQrCard.hide();
   stopCustomerRealtime("student");
   Object.assign(orderLoads.student,{status:"idle",error:null,request:orderLoads.student.request+1,subscription:orderLoads.student.subscription+1});
   localStorage.removeItem(STUDENT_SESSION_KEY);
@@ -378,6 +380,7 @@ function saveTeacherSession(phone){
 }
 
 function clearTeacherSession(){
+  teacherQrCard.hide();
   stopCustomerRealtime("teacher");
   Object.assign(orderLoads.teacher,{status:"idle",error:null,request:orderLoads.teacher.request+1,subscription:orderLoads.teacher.subscription+1});
   localStorage.removeItem(TEACHER_SESSION_KEY);
@@ -570,7 +573,7 @@ $("pickupCard").addEventListener("click",async()=>{
   renderOrderViews("student");
 });
 
-function renderPickup(){renderLoadFeedback("student");if(renderPickupLoadState("student"))return;const o=studentOrder,c=o?.customer||{},status=o?.payment?.status||"none";$("pickupStudentId").textContent=studentSession?.studentId||"-";$("pickupStudentName").textContent=o?`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim():"ยังไม่มีข้อมูลผู้สั่งซื้อ";$("pickupStudentClass").textContent=o?`${c.level||"-"} / ห้อง ${c.room||"-"}`:"-";$("pickupStudentPhone").textContent=c.phone||"-";$("pickupOrderRef").textContent=o?.referenceCode||"-";$("pickupQty").textContent=o?`${o.order?.quantity||0} ใบ`:"-";$("pickupAmount").textContent=o?money(o.order?.totalAmount):"-";const hero=$("pickupStatusHero");$("pickupReadyPanel").classList.add("hidden");hero.className="pickup-status-hero waiting-status";
+function renderPickup(){studentQrCard.render(studentOrder,pickupConfigState.status==="ready"?pickupOpen:null,orderLoads.student.status==="ready");renderLoadFeedback("student");if(renderPickupLoadState("student"))return;const o=studentOrder,c=o?.customer||{},status=o?.payment?.status||"none";$("pickupStudentId").textContent=studentSession?.studentId||"-";$("pickupStudentName").textContent=o?`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim():"ยังไม่มีข้อมูลผู้สั่งซื้อ";$("pickupStudentClass").textContent=o?`${c.level||"-"} / ห้อง ${c.room||"-"}`:"-";$("pickupStudentPhone").textContent=c.phone||"-";$("pickupOrderRef").textContent=o?.referenceCode||"-";$("pickupQty").textContent=o?`${o.order?.quantity||0} ใบ`:"-";$("pickupAmount").textContent=o?money(o.order?.totalAmount):"-";const hero=$("pickupStatusHero");$("pickupReadyPanel").classList.add("hidden");hero.className="pickup-status-hero waiting-status";
   if(!o){$("pickupHeroIcon").textContent="!";$("pickupHeroTitle").textContent="ยังไม่ได้พรีออเดอร์";$("pickupHeroText").textContent="ต้องพรีออเดอร์กระเป๋าให้เรียบร้อยก่อนจึงจะใช้ฟังก์ชันการรับกระเป๋าได้";$("pickupFinanceStatus").textContent="ยังไม่มีรายการ";return;}
   if(status==="pending"){$("pickupHeroIcon").textContent="⌛";$("pickupHeroTitle").textContent="รอฝ่ายการเงินตรวจสอบ";$("pickupHeroText").textContent="ได้รับคำสั่งซื้อและสลิปแล้ว ฝ่ายการเงินกำลังตรวจสอบยอดกับบัญชีธนาคาร";$("pickupFinanceStatus").textContent="รอตรวจสอบ";return;}
   if(status==="rejected"){hero.className="pickup-status-hero rejected-status";$("pickupHeroIcon").textContent="!";$("pickupHeroTitle").textContent="การชำระเงินมีปัญหา";$("pickupHeroText").textContent=o.payment?.financeNote||"ฝ่ายการเงินไม่สามารถยืนยันการชำระเงินได้ กรุณาติดต่อฝ่ายการเงิน";$("pickupFinanceStatus").textContent="มีปัญหา";return;}
@@ -990,6 +993,7 @@ function renderTeacherPickupOrders(){
 }
 
 function renderTeacherPickup(){
+  teacherQrCard.render(teacherOrder,pickupConfigState.status==="ready"?pickupOpen:null,orderLoads.teacher.status==="ready");
   renderLoadFeedback("teacher");
   if(renderPickupLoadState("teacher"))return;
   const o=teacherOrder,c=o?.customer||{},status=o?.payment?.status||"none";
@@ -1412,6 +1416,8 @@ $("successClose").addEventListener("click",()=>{
 setTeacherQty(1);
 
 
+const studentQrCard=createPickupQrCard(document.querySelector("#pickupScreen .pickup-shell"));
+const teacherQrCard=createPickupQrCard(document.querySelector("#teacherPickupScreen .pickup-shell"));
 setupOrderLoadFeedback();
 
 // Restore persistent student login / remembered teacher phone after page setup.

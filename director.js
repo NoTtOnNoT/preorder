@@ -1,3 +1,4 @@
+import { createPickupQrCard } from "./pickup-qr.js?v=20261105-qr1";
 import { indexedRootUpdates } from "./order-data.js?v=20261103-complete3";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, push, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
@@ -14,6 +15,7 @@ let slipData=null;
 let slipMeta=null;
 let submitting=false;
 let submitted=false;
+const directorQrCard=createPickupQrCard($("directorOrderQr"));
 
 function money(v){return `฿${Number(v||0).toLocaleString("th-TH")}`;}
 function toast(text,type=""){
@@ -165,6 +167,7 @@ $("submitOrder").addEventListener("click",async()=>{
     await update(ref(db),indexedRootUpdates(updates));
     submitted=true;
     $("successRef").textContent=code;
+    directorQrCard.render({id:orderNode.key,...data,createdAt:Date.now()},false);
     $("successModal").classList.remove("hidden");
     $("submitOrder").textContent="ส่งพรีออเดอร์แล้ว";
   }catch(e){

@@ -1,3 +1,5 @@
+import { createQrScanner } from "./qr-scanner.js?v=20261105-qr1";
+import { parsePickupPayload, pickupError, pickupMessage, pickupEligibility, confirmOrderPickup } from "./pickup-service.js?v=20261105-qr1";
 import { subscribeOrderSummaries, prepareOrderIndex, loadOrderDetail, updateIndexedOrder, updateIndexedRoot } from "./order-data.js?v=20261103-complete3";
 import { createOrderControls } from "./order-ui.js?v=20261103-complete3";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
@@ -73,12 +75,35 @@ let pickupOpen = false;
 let pickupOpenedAt = null;
 let pickupOpenedBy = null;
 const slipCache = new Map();
-let orderListReady=false,detailRequest=0;
+let orderListReady=false,detailRequest=0,selectedOrder=null,selectedScan=null,pickupConfirmBusy=false;
 const dataControls=createOrderControls(adminApp.querySelector("main"),orderTableBody,
   ()=>subscribeOrders(),()=>rebuildOrderList(),()=>renderTable(),()=>{
     searchInput.value="";statusFilter.value="";levelFilter.value="";dataControls.resetPage();renderTable();
   });
 
+const qrScanner=createQrScanner({
+  onQr:async(raw,context)=>{
+    if(!currentAdmin)throw Object.assign(new Error("กรุณาเข้าสู่ระบบแอดมินก่อน"),{userMessage:"กรุณาเข้าสู่ระบบแอดมินก่อน"});
+    const scan=parsePickupPayload(raw);
+    await openDetail(scan.id,{scan,isActive:context?.isActive});
+  },
+  onManual:async(raw,context)=>{
+    if(raw.startsWith("SCKC-BAG|")){
+      const scan=parsePickupPayload(raw);await openDetail(scan.id,{scan,isActive:context?.isActive});return;
+    }
+    if(!currentAdmin)throw Object.assign(new Error("กรุณาเข้าสู่ระบบแอดมินก่อน"),{userMessage:"กรุณาเข้าสู่ระบบแอดมินก่อน"});
+    const matches=orders.filter(order=>order.id===raw||String(order.referenceCode||"").toUpperCase()===raw.toUpperCase()||String(order.pickup?.code||"").toUpperCase()===raw.toUpperCase());
+    if(matches.length!==1)throw new Error(matches.length>1?"รหัสนี้ตรงกับหลายรายการ กรุณาใช้ QR ของคำสั่งซื้อ":"ไม่พบรหัสนี้ในรายการที่โหลด กรุณาใช้ QR หรือรีเฟรชรายการ");
+    const order=matches[0];await openDetail(order.id,{scan:{id:order.id,reference:String(order.referenceCode||"")},isActive:context?.isActive});
+  }
+});
+document.getElementById("openQrScanner").addEventListener("click",()=>{
+  if(currentAdmin&&!pickupConfirmBusy)qrScanner.open();
+});
+document.getElementById("scanNextOrderBtn").addEventListener("click",()=>{
+  if(pickupConfirmBusy)return;
+  detailRequest++;detailModal.classList.add("hidden");qrScanner.open();
+});
 restoreSession();
 
 loginForm.addEventListener("submit", async (e) => {
@@ -165,6 +190,7 @@ function restoreSession() {
 }
 
 function clearSession() {
+  qrScanner.close();
   currentAdmin=null;
   localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(SESSION_KEY);
@@ -184,6 +210,7 @@ function clearSession() {
 }
 
 logoutBtn.addEventListener("click", () => {
+  if(pickupConfirmBusy){showToast("กรุณารอผลยืนยันรับกระเป๋าก่อนออกจากระบบ");return;}
   clearSession();
   location.reload();
 });
@@ -417,7 +444,7 @@ openPickupBtn.addEventListener("click", async () => {
   if(!orderListReady)return showToast("กรุณารอโหลดรายการให้สำเร็จก่อน");
   const verified = orders.filter((order) =>
     statusOf(order) === "verified" &&
-    (order.pickup?.status || "locked") !== "picked_up"
+    (order.pickup?.status || "locked") !== "picked_up" && order.pickup?.pickedUpAt==null && order.status!=="completed"
   );
 
   const message = pickupOpen
@@ -478,68 +505,79 @@ closePickupBtn.addEventListener("click", async () => {
   }
 });
 
-async function openDetail(id) {
-  if(!orders.some(order=>order.id===id))return;
-  const request=++detailRequest;
-  selectedId=id;
-  detailModal.classList.add("hidden");
-  let o;
-  try{o=await loadOrderDetail(db,id);}
-  catch(error){console.error(error);showToast("โหลดรายละเอียดไม่สำเร็จ กรุณาลองใหม่");return;}
-  if(request!==detailRequest||selectedId!==id)return;
-  if(!o){showToast("ไม่พบคำสั่งซื้อนี้");return;}
-  const c = o.customer || {};
-
-  dReference.textContent = o.referenceCode || "-";
-  dStudentId.textContent = c.studentId || (o.buyerType === "teacher" ? "ครู" : "-");
-  dName.textContent = nameOf(o);
-  dClass.textContent = c.level ? `${c.level} / ห้อง ${c.room || "-"}` : "ครู";
-  dPhone.textContent = c.phone || "-";
-  dContact.textContent = c.contact ? `${c.contact?.type === "instagram" ? "Instagram" : "Facebook"} · ${c.contact?.value || "-"}` : "-";
-  dQuantity.textContent = `${Number(o.order?.quantity || 0)} ใบ`;
-  dTotal.textContent = money(o.order?.totalAmount || 0);
-  // Old orders may still contain payment.slipData.
-  // New orders keep the large image under orderSlips/{orderId}, so the
-  // dashboard/table remains lightweight and the image is fetched on demand.
-  const oldSlip=o.payment?.slipData||"";
-  if(oldSlip){
-    dSlip.src=oldSlip;
-  }else{
-    dSlip.removeAttribute("src");
-    dSlip.alt="กำลังโหลดสลิป...";
-    try{
-      let slip=slipCache.get(o.id);
-      if(!slip){
-        const slipSnap=await get(ref(db,`orderSlips/${o.id}/data`));
-        slip=slipSnap.exists()?slipSnap.val():"";
-        if(slip) slipCache.set(o.id,slip);
-        if(request!==detailRequest||selectedId!==id)return;
-      }
-      dSlip.src=slip||"";
-      dSlip.alt=slip?"สลิปการชำระเงิน":"ไม่พบสลิป";
-    }catch(error){
-      console.error("load slip",error);
-      dSlip.alt="โหลดสลิปไม่สำเร็จ";
-    }
+function readableDate(value){return typeof value==="number"?formatDate(new Date(value)):"-";}
+function renderSelectedPickupStatus(order){
+  const state=pickupEligibility(order,pickupOpen);
+  dPickupStatus.textContent=({locked:"ยังไม่พร้อมรับ",ready:"พร้อมรับ",picked_up:"รับสินค้าแล้ว"})[order.pickup?.status||"locked"]||"ยังไม่พร้อมรับ";
+  if(state.code==="ALREADY_PICKED_UP")dPickupStatus.textContent="รับสินค้าแล้ว";
+  dPickupCode.textContent=order.pickup?.code||"ยังไม่มีรหัส";
+  document.getElementById("dPaymentStatus").textContent=({pending:"รอตรวจสอบ",verified:"ยืนยันแล้ว",rejected:"มีปัญหา"})[order.payment?.status]||"ยังไม่ทราบสถานะ";
+  document.getElementById("dPickedUpInfo").textContent=order.pickup?.pickedUpAt?`${order.pickup.pickedUpBy||"-"} / ${readableDate(order.pickup.pickedUpAt)}${order.pickup.confirmedVia==="qr"?" · สแกน QR":order.pickup.confirmedVia==="manual"?" · ยืนยันด้วยรหัส":""}`:"ยังไม่ได้รับกระเป๋า";
+  markPickedUpBtn.disabled=pickupConfirmBusy||!state.allowed;
+  setReadyBtn.disabled=pickupConfirmBusy||!pickupOpen||order.payment?.status!=="verified"||state.code==="ALREADY_PICKED_UP";
+  lockPickupBtn.disabled=pickupConfirmBusy||state.code==="ALREADY_PICKED_UP";
+  document.getElementById("scanNextOrderBtn").disabled=pickupConfirmBusy;
+  detailModal.querySelectorAll("[data-status],button[data-close]").forEach(button=>button.disabled=pickupConfirmBusy);
+  const notice=document.getElementById("detailScanNotice");notice.hidden=false;
+  notice.dataset.state=state.code==="ALREADY_PICKED_UP"?"done":state.allowed?"ready":"blocked";
+  notice.textContent=state.code==="ALREADY_PICKED_UP"?"รับกระเป๋ารายการนี้แล้ว ตรวจสอบผู้ยืนยันและเวลารับได้ด้านล่าง":state.allowed?"ตรวจสอบชื่อผู้รับและจำนวนกระเป๋าให้ตรง แล้วกด “ยืนยันรับกระเป๋า”":pickupMessage(pickupError(state.code));
+}
+async function openDetail(id,options={}){
+  if(pickupConfirmBusy)return false;
+  if(!currentAdmin||currentAdmin.role!=="admin"){
+    if(options.scan)throw Object.assign(pickupError("ADMIN_REQUIRED"),{userMessage:pickupMessage(pickupError("ADMIN_REQUIRED"))});
+    return false;
   }
-
-  const pickupStatus = o.pickup?.status || "locked";
-  dPickupStatus.textContent = {
-    locked: "ยังไม่พร้อมรับ",
-    ready: "พร้อมรับ",
-    picked_up: "รับสินค้าแล้ว"
-  }[pickupStatus] || pickupStatus;
-  dPickupCode.textContent = o.pickup?.code || "ยังไม่มีรหัส";
-
-  setReadyBtn.disabled = statusOf(o) !== "verified";
-  markPickedUpBtn.disabled = pickupStatus !== "ready";
-  lockPickupBtn.disabled = pickupStatus === "picked_up";
-
+  if(!options.scan&&!orders.some(order=>order.id===id))return false;
+  const request=++detailRequest;
+  selectedId=id;selectedOrder=null;selectedScan=options.scan||null;
+  detailModal.classList.add("hidden");
+  let order;
+  try{
+    const [record,config]=await Promise.all([loadOrderDetail(db,id),get(ref(db,"systemConfig/pickupOpen"))]);
+    order=record;pickupOpen=config.exists()&&config.val()===true;
+    if(!order)throw pickupError("ORDER_NOT_FOUND");
+    if(options.scan&&String(order.referenceCode||"")!==options.scan.reference)throw pickupError("QR_MISMATCH");
+  }catch(error){
+    if(request!==detailRequest||options.isActive?.()===false)return false;
+    if(options.scan)throw Object.assign(error,{userMessage:pickupMessage(error)});
+    showToast(pickupMessage(error));return false;
+  }
+  if(request!==detailRequest||options.isActive?.()===false)return false;
+  selectedOrder=order;
+  const customer=order.customer||{};
+  dReference.textContent=order.referenceCode||"-";
+  dStudentId.textContent=customer.studentId||({teacher:"ครู",director:"ผอ."})[order.buyerType]||"-";
+  dName.textContent=nameOf(order)||customer.displayName||"-";
+  dClass.textContent=customer.level?`${customer.level} / ห้อง ${customer.room||"-"}`:({teacher:"ครู",director:"ผอ."})[order.buyerType]||"-";
+  dPhone.textContent=customer.phone||"-";
+  dContact.textContent=customer.contact?`${customer.contact.type==="instagram"?"Instagram":"Facebook"} · ${customer.contact.value||"-"}`:"-";
+  dQuantity.textContent=`${Number(order.order?.quantity||0)} ใบ`;
+  dTotal.textContent=money(order.order?.totalAmount||0);
+  document.getElementById("dBuyerType").textContent=({student:"นักเรียน",teacher:"ครู",director:"ผอ."})[order.buyerType]||"-";
+  document.getElementById("dOrderDate").textContent=readableDate(order.createdAt);
+  document.getElementById("dBankReference").textContent=order.payment?.bankReference||"-";
+  document.getElementById("dFinanceNote").textContent=order.payment?.financeNote||"-";
+  document.getElementById("dReviewed").textContent=`${order.payment?.reviewedBy||order.reviewedBy||"-"} / ${readableDate(order.payment?.reviewedAt||order.reviewedAt)}`;
+  const message=document.getElementById("detailPickupMessage");message.textContent="";message.dataset.state="";
+  renderSelectedPickupStatus(order);
   detailModal.classList.remove("hidden");
+  const oldSlip=order.payment?.slipData||"";
+  dSlip.removeAttribute("src");dSlip.alt="กำลังโหลดสลิป…";
+  if(oldSlip){dSlip.src=oldSlip;dSlip.alt="สลิปการชำระเงิน";}
+  else (async()=>{
+    try{
+      let slip=slipCache.get(id);
+      if(!slip){const snap=await get(ref(db,`orderSlips/${id}/data`));slip=snap.exists()?snap.val():"";if(slip)slipCache.set(id,slip);}
+      if(request!==detailRequest||selectedId!==id)return;
+      if(slip)dSlip.src=slip;dSlip.alt=slip?"สลิปการชำระเงิน":"ไม่พบสลิป";
+    }catch(error){if(request===detailRequest&&selectedId===id)dSlip.alt="โหลดสลิปไม่สำเร็จ";console.warn("load slip",error);}
+  })();
+  return true;
 }
 
 document.querySelectorAll("[data-close]").forEach((el) => {
-  el.addEventListener("click", () => detailModal.classList.add("hidden"));
+  el.addEventListener("click", () => {if(!pickupConfirmBusy){detailRequest++;detailModal.classList.add("hidden");}});
 });
 
 document.querySelectorAll("[data-status]").forEach((btn) => {
@@ -562,9 +600,10 @@ document.querySelectorAll("[data-status]").forEach((btn) => {
 
 
 setReadyBtn.addEventListener("click", async () => {
-  const order = orders.find((item) => item.id === selectedId);
+  const order = selectedOrder?.id===selectedId?selectedOrder:orders.find((item) => item.id === selectedId);
   if (!order) return;
 
+  if(pickupEligibility(order,pickupOpen).code==="ALREADY_PICKED_UP"){showToast("รายการนี้รับกระเป๋าแล้ว");return;}
   if (statusOf(order) !== "verified") {
     showToast("ต้องให้ฝ่ายการเงินยืนยันการชำระเงินก่อน");
     return;
@@ -586,30 +625,33 @@ setReadyBtn.addEventListener("click", async () => {
   showToast("ตั้งสถานะพร้อมรับแล้ว");
 });
 
-markPickedUpBtn.addEventListener("click", async () => {
-  const order = orders.find((item) => item.id === selectedId);
-  if (!order) return;
-
-  if ((order.pickup?.status || "locked") !== "ready") {
-    showToast("รายการนี้ยังไม่อยู่ในสถานะพร้อมรับ");
-    return;
+markPickedUpBtn.addEventListener("click",async()=>{
+  if(pickupConfirmBusy||!selectedOrder||!currentAdmin)return;
+  const order=selectedOrder;
+  if(!confirm(`ยืนยันการรับกระเป๋า ${Number(order.order?.quantity||0)} ใบ ของ ${nameOf(order)||order.customer?.displayName||"ผู้ซื้อ"} ใช่หรือไม่?`))return;
+  const id=selectedId,admin={...currentAdmin};
+  pickupConfirmBusy=true;renderSelectedPickupStatus(order);
+  const message=document.getElementById("detailPickupMessage");
+  message.dataset.state="";message.textContent="กำลังบันทึก กรุณารอผลยืนยันก่อนมอบกระเป๋า…";
+  const originalText=markPickedUpBtn.textContent;markPickedUpBtn.textContent="กำลังยืนยัน…";
+  try{
+    const result=await confirmOrderPickup(db,id,admin,{expectedReference:selectedScan?.reference,via:selectedScan?"qr":"manual"});
+    selectedOrder=result.order;
+    const index=orders.findIndex(item=>item.id===id);if(index!==-1)orders[index]={...orders[index],pickup:result.order.pickup,status:result.order.status};
+    message.dataset.state="done";
+    message.textContent=result.indexSynced?"บันทึกรับกระเป๋าเรียบร้อยแล้ว ไม่สามารถยืนยันรายการนี้ซ้ำได้":"บันทึกรับกระเป๋าเรียบร้อยแล้ว รายการสรุปอาจอัปเดตช้า กรุณาซิงก์รายการเมื่ออินเทอร์เน็ตพร้อม";
+    renderAll();showToast("ยืนยันรับกระเป๋าเรียบร้อยแล้ว");
+  }catch(error){
+    message.dataset.state="error";message.textContent=pickupMessage(error);
+    try{const fresh=await loadOrderDetail(db,id);if(fresh)selectedOrder=fresh;}catch{}
+  }finally{
+    pickupConfirmBusy=false;markPickedUpBtn.textContent=originalText;
+    if(selectedOrder&&selectedId===id)renderSelectedPickupStatus(selectedOrder);
   }
-
-  if (!confirm(`ยืนยันว่าได้มอบกระเป๋า ${Number(order.order?.quantity || 0)} ใบให้ ${nameOf(order)} แล้วใช่หรือไม่?`)) return;
-
-  await updateIndexedOrder(db, order.id, {
-    "pickup/status": "picked_up",
-    "pickup/pickedUpAt": Date.now(),
-    "pickup/pickedUpBy": currentAdmin?.username || "admin",
-    status: "completed"
-  });
-
-  detailModal.classList.add("hidden");
-  showToast("บันทึกว่ารับสินค้าแล้ว");
 });
 
 lockPickupBtn.addEventListener("click", async () => {
-  const order = orders.find((item) => item.id === selectedId);
+  const order = selectedOrder?.id===selectedId?selectedOrder:orders.find((item) => item.id === selectedId);
   if (!order) return;
 
   if (!confirm(`ต้องการล็อกการรับสินค้าของ ${nameOf(order)} ใช่หรือไม่?`)) return;
