@@ -16,3 +16,12 @@ export async function verifyCouncilPassword(account,password){
   const expected=Uint8Array.from(account.passwordHash.match(/../g),pair=>parseInt(pair,16));
   let difference=0;for(let i=0;i<bits.length;i++)difference|=bits[i]^expected[i];return difference===0;
 }
+
+// A non-secret fingerprint detects account/password changes without retaining
+// either the entered password or its stored PBKDF2 verifier on this device.
+export async function councilCredentialStamp(account){
+  if(!validCouncilAccount(account))throw new Error("INVALID_ACCOUNT");
+  const bytes=new TextEncoder().encode(JSON.stringify([account.passwordAlgorithm,account.passwordSalt.toLowerCase(),account.passwordIterations,account.passwordHash.toLowerCase(),account.credentialVersion]));
+  const digest=new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256",bytes));
+  return Array.from(digest,value=>value.toString(16).padStart(2,"0")).join("");
+}
