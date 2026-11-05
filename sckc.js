@@ -3,15 +3,17 @@ import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebase
 import { firebaseConfig } from "./firebase-config.js";
 import { subscribeOrderSummaries, loadOrderDetail } from "./order-data.js?v=20261103-complete3";
 import { parsePickupPayload, pickupEligibility, pickupMessage, pickupError, loadCouncilAccount, confirmCouncilPickup } from "./pickup-service.js?v=20261105-sckc-path2";
-import { verifyCouncilPassword, validCouncilAccount } from "./sckc-auth.js?v=20261105-sckc1";
-import { createStationScanner } from "./sckc-scanner.js?v=20261105-sckc1";
+import { verifyCouncilPassword, validCouncilAccount, councilCredentialStamp } from "./sckc-auth.js?v=20261105-session1";
+import { createStationScanner } from "./sckc-scanner.js?v=20261105-copy-session2";
 
 const db=getDatabase(initializeApp(firebaseConfig)), $=id=>document.getElementById(id);
+const SESSION_KEY="preorder_sckc_session_v1", REMEMBER_MS=7*24*60*60*1000;
 const PAGE_SIZE=40, SESSION_MS=12*60*60*1000, collator=new Intl.Collator("th",{numeric:true,sensitivity:"base"});
 let council=null,orders=[],loaded=false,filter="waiting",page=1,view="overview",selected=null,selectedScan=null;
 let configReady=false,pickupOpen=false,connected=false,confirmBusy=false,scanLookupBusy=false,loginBusy=false;
 let request=0,loginRequest=0,readsGeneration=0,sessionTimer,toastTimer,sessionExpiresAt=0;
 let unsubscribeOrders,unsubscribeConfig,unsubscribeConnection,unsubscribeAccount;
+let sessionMode="memory",accountWatch=0;
 const scanner=createStationScanner({video:$("stationCamera"),message:$("cameraMessage"),onResult:lookupQr,onControls:({running,opening,busy})=>{
   $("startStationCamera").disabled=opening||running||busy||scanLookupBusy;
   $("startStationCamera").textContent=opening?"กำลังขออนุญาต…":running?"กำลังสแกน QR…":"เปิดกล้องเพื่อสแกน";
@@ -50,11 +52,75 @@ function show(viewName,{push=true}={}){
   window.scrollTo?.({top:0,behavior:"instant"});
 }
 function endSession(message="ออกจากระบบแล้ว"){
-  loginRequest++;request++;readsGeneration++;clearTimeout(sessionTimer);stopReads();unsubscribeAccount?.();unsubscribeAccount=null;
+  loginRequest++;request++;readsGeneration++;accountWatch++;clearTimeout(sessionTimer);clearSavedSession();stopReads();unsubscribeAccount?.();unsubscribeAccount=null;
   scanner.deactivate();council=null;sessionExpiresAt=0;orders=[];loaded=false;selected=null;selectedScan=null;confirmBusy=false;connected=false;
   $("councilApp").hidden=true;$("councilLogin").hidden=false;$("councilPassword").value="";$("loginMessage").textContent=message;
   $("recipientList").replaceChildren();$("handoverCard").hidden=true;$("stationToast").hidden=true;
-  // No administrator session, password or password verifier is persisted on this device.
+  sessionMode="memory";$("retryCouncilSession").hidden=true;
+  // Administrator sessions and other websites are never cleared.
+}
+function clearSavedSession(){
+  for(const storage of [()=>localStorage,()=>sessionStorage])try{storage().removeItem(SESSION_KEY);}catch{}
+}
+function saveCouncilSession(actor,expiresAt,remember){
+  clearSavedSession();
+  const data=JSON.stringify({version:1,...actor,expiresAt,savedAt:Date.now()});
+  try{(remember?localStorage:sessionStorage).setItem(SESSION_KEY,data);return remember?"local":"tab";}catch{return "memory";}
+}
+function savedCouncilSession(){
+  for(const [mode,storage] of [["local",()=>localStorage],["tab",()=>sessionStorage]]){
+    let raw;try{raw=storage().getItem(SESSION_KEY);}catch{continue;}
+    if(!raw)continue;
+    try{
+      const record=JSON.parse(raw),now=Date.now(),limit=mode==="local"?REMEMBER_MS:SESSION_MS;
+      const path=record.username==="sckc"&&record.accountPath==="sckc"||record.accountPath===`sckcAccounts/${record.username}`;
+      if(record.version!==1||record.role!=="pickup"||!path||!/^[a-z0-9_-]{1,64}$/.test(record.username||"")||!Number.isInteger(record.credentialVersion)||record.credentialVersion<1||!/^[a-f0-9]{64}$/.test(record.credentialStamp||"")||!Number.isFinite(record.savedAt)||!Number.isFinite(record.expiresAt)||record.savedAt>now+60000||record.expiresAt<=now||record.expiresAt-record.savedAt>limit+1000)throw new Error("INVALID_SESSION");
+      return {record,mode};
+    }catch{try{storage().removeItem(SESSION_KEY);}catch{}}
+  }
+  return null;
+}
+function scheduleSessionExpiry(){
+  clearTimeout(sessionTimer);
+  sessionTimer=setTimeout(()=>{if(!confirmBusy)endSession("หมดเวลาการเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่");},Math.max(0,sessionExpiresAt-Date.now()));
+}
+function loginErrorMessage(error){
+  const text=String(error?.code||"")+" "+String(error?.message||"");
+  if(/permission|unauthorized|access.denied/i.test(text))return "Database ไม่อนุญาตให้อ่านบัญชี กรุณาตรวจ Rules ไม่ต้อง Import บัญชีซ้ำ";
+  if(error?.message==="SECURE_CONTEXT_REQUIRED")return "กรุณาเปิดผ่าน HTTPS เพื่อเข้าสู่ระบบ";
+  if(error?.message==="INVALID_LOGIN")return "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือไม่พบบัญชีจุดรับที่ตั้งไว้";
+  return "เชื่อมต่อเพื่อตรวจสอบบัญชีไม่ได้ กรุณาตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง";
+}
+function activateCouncilSession(actor,expiresAt,mode){
+  council=actor;sessionExpiresAt=expiresAt;sessionMode=mode;scheduleSessionExpiry();
+  $("councilPassword").value="";$("loginMessage").textContent="";$("retryCouncilSession").hidden=true;$("councilLogin").hidden=true;$("councilApp").hidden=false;
+  unsubscribeAccount?.();const watch=++accountWatch;
+  unsubscribeAccount=onValue(ref(db,actor.accountPath),async snapshot=>{
+    const latest=snapshot.val();let valid=validCouncilAccount(latest)&&latest.credentialVersion===actor.credentialVersion;
+    try{if(valid)valid=await councilCredentialStamp(latest)===actor.credentialStamp;}catch{valid=false;}
+    if(watch!==accountWatch||council!==actor)return;
+    if(!valid){if(confirmBusy){sessionExpiresAt=0;clearSavedSession();return;}endSession("บัญชีถูกปิดหรือเปลี่ยนรหัสผ่าน กรุณาเข้าสู่ระบบใหม่");}
+  },()=>{if(confirmBusy){sessionExpiresAt=0;clearSavedSession();}else endSession("ตรวจสอบสิทธิ์บัญชีไม่ได้ กรุณาเข้าสู่ระบบใหม่");});
+  startReads();show(location.hash==="#scan"?"scan":"overview",{push:false});
+}
+async function restoreCouncilSession(){
+  if(loginBusy||council)return;
+  const saved=savedCouncilSession();if(!saved)return;
+  const {record,mode}=saved,ticket=++loginRequest;
+  loginBusy=true;$("councilLoginButton").disabled=true;$("retryCouncilSession").hidden=true;$("councilUsername").value=record.username;$("loginMessage").textContent="กำลังตรวจสอบการเข้าสู่ระบบที่จำไว้…";
+  try{
+    const {account,path}=await loadCouncilAccount(db,record.username);
+    if(ticket!==loginRequest)return;
+    if(!validCouncilAccount(account)||path!==record.accountPath||account.credentialVersion!==record.credentialVersion||await councilCredentialStamp(account)!==record.credentialStamp){
+      clearSavedSession();$("loginMessage").textContent="บัญชีหรือรหัสผ่านมีการเปลี่ยนแปลง กรุณาเข้าสู่ระบบใหม่";return;
+    }
+    if(ticket!==loginRequest)return;
+    if(record.expiresAt<=Date.now()){clearSavedSession();$("loginMessage").textContent="หมดเวลาการเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่";return;}
+    const actor={username:record.username,role:"pickup",credentialVersion:record.credentialVersion,accountPath:path,credentialStamp:record.credentialStamp};
+    activateCouncilSession(actor,record.expiresAt,mode);
+  }catch(error){
+    if(ticket===loginRequest){$("loginMessage").textContent=loginErrorMessage(error);$("retryCouncilSession").hidden=false;}
+  }finally{loginBusy=false;$("councilLoginButton").disabled=false;}
 }
 $("councilLoginForm").addEventListener("submit",async event=>{
   event.preventDefault();if(loginBusy)return;
@@ -65,17 +131,15 @@ $("councilLoginForm").addEventListener("submit",async event=>{
     const {account,path:accountPath}=await loadCouncilAccount(db,user);
     if(!account||!await verifyCouncilPassword(account,pass))throw new Error("INVALID_LOGIN");
     if(ticket!==loginRequest)return;
-    council={username:user,role:"pickup",credentialVersion:account.credentialVersion,accountPath};sessionExpiresAt=Date.now()+SESSION_MS;
-    $("councilPassword").value="";$("loginMessage").textContent="";$("councilLogin").hidden=true;$("councilApp").hidden=false;
-    sessionTimer=setTimeout(()=>{if(!confirmBusy)endSession("หมดเวลาการเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่");},SESSION_MS);
-    unsubscribeAccount=onValue(ref(db,accountPath),snapshot=>{
-      const latest=snapshot.val();
-      if(council&&(!validCouncilAccount(latest)||latest.credentialVersion!==council.credentialVersion)){
-        if(confirmBusy){sessionExpiresAt=0;return;}endSession("บัญชีถูกปิดหรือเปลี่ยนรหัสผ่าน กรุณาเข้าสู่ระบบใหม่");
-      }
-    },()=>{if(!confirmBusy)endSession("ตรวจสอบสิทธิ์บัญชีไม่ได้ กรุณาเข้าสู่ระบบใหม่");});
-    startReads();show(location.hash==="#scan"?"scan":"overview",{push:false});
-  }catch(error){if(ticket===loginRequest)$("loginMessage").textContent=error.message==="SECURE_CONTEXT_REQUIRED"?"กรุณาเปิดผ่าน HTTPS เพื่อเข้าสู่ระบบ":String(error.code||"").toLowerCase().includes("permission")?"อ่านบัญชีไม่ได้ กรุณาให้ผู้ดูแลตรวจสิทธิ์ Database":"ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือไม่พบบัญชีจุดรับที่ตั้งไว้";}
+    const credentialStamp=await councilCredentialStamp(account);
+    if(ticket!==loginRequest)return;
+    const remember=$("rememberCouncilLogin").checked===true;
+    const actor={username:user,role:"pickup",credentialVersion:account.credentialVersion,accountPath,credentialStamp};
+    const expiresAt=Date.now()+(remember?REMEMBER_MS:SESSION_MS);
+    const mode=saveCouncilSession(actor,expiresAt,remember);
+    activateCouncilSession(actor,expiresAt,mode);
+    if(mode==="memory")toast("เบราว์เซอร์นี้บันทึกการเข้าสู่ระบบไม่ได้ ใช้งานต่อในแท็บนี้ได้");
+  }catch(error){if(ticket===loginRequest)$("loginMessage").textContent=loginErrorMessage(error);}
   finally{loginBusy=false;$("councilLoginButton").disabled=false;}
 });
 $("councilLogout").addEventListener("click",()=>{if(confirmBusy){toast("กรุณารอผลยืนยันก่อนออกจากระบบ");return;}endSession();});
@@ -232,3 +296,11 @@ document.addEventListener("visibilitychange",()=>{
 window.addEventListener("pagehide",()=>{scanner.deactivate();if(!confirmBusy)stopReads();});
 window.addEventListener("pageshow",event=>{if(event.persisted&&council&&!confirmBusy)startReads();});
 window.addEventListener("beforeunload",event=>{if(confirmBusy){event.preventDefault();event.returnValue="";}});
+
+$("retryCouncilSession").addEventListener("click",restoreCouncilSession);
+window.addEventListener("storage",event=>{
+  if(event.key===SESSION_KEY&&event.newValue===null&&sessionMode==="local"&&council){
+    if(confirmBusy){sessionExpiresAt=0;return;}endSession("ออกจากระบบจากแท็บอื่นแล้ว");
+  }
+});
+restoreCouncilSession();

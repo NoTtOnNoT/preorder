@@ -6,7 +6,7 @@
   <title>ยืนยันการรับกระเป๋า · สภานักเรียน</title>
   <link rel="icon" href="./favicon.svg"><link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./sckc.css?v=20261105-sckc1">
+  <link rel="stylesheet" href="./sckc.css?v=20261105-copy-session2">
 </head>
 <body>
   <section id="councilLogin" class="login-shell">
@@ -17,7 +17,9 @@
       <form id="councilLoginForm">
         <label for="councilUsername">ชื่อผู้ใช้</label><input id="councilUsername" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="ชื่อบัญชีสภานักเรียน" maxlength="64">
         <label for="councilPassword">รหัสผ่าน</label><input id="councilPassword" type="password" autocomplete="current-password" required placeholder="กรอกรหัสผ่าน">
+        <label class="remember-session" for="rememberCouncilLogin"><input id="rememberCouncilLogin" type="checkbox" checked><span>จำการเข้าสู่ระบบ 7 วัน<small>สำหรับอุปกรณ์ที่คุณใช้งานประจำ</small></span></label>
         <p id="loginMessage" class="message" role="status" aria-live="polite"></p><button id="councilLoginButton" class="primary wide" type="submit">เข้าสู่ระบบยืนยันการรับกระเป๋า <span aria-hidden="true">→</span></button>
+        <button id="retryCouncilSession" class="secondary wide" type="button" hidden>ลองเข้าสู่ระบบที่จำไว้อีกครั้ง</button>
       </form>
       <small>บัญชีสำหรับรับสินค้า</small>
     </main><p class="login-footer">สภานักเรียน · โรงเรียนสะเดา “ขรรค์ชัยกัมพลานนท์อนุสรณ์”</p>
@@ -64,6 +66,6 @@
     </main><footer class="app-footer">สภานักเรียน · ส่งมอบกระเป๋าให้ตรงคน ครบตามจำนวน</footer>
   </div>
   <div id="stationToast" class="toast" role="status" aria-live="polite" hidden></div>
-  <script type="module" src="./sckc.js?v=20261105-sckc-path2"></script>
+  <script type="module" src="./sckc.js?v=20261105-copy-session2"></script>
 </body>
 </html>
