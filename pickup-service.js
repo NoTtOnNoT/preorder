@@ -48,13 +48,24 @@ export async function confirmOrderPickup(db,id,admin,{expectedReference,via="man
   if(!admin||admin.role!=="admin"||!String(admin.username||"").trim())throw pickupError("ADMIN_REQUIRED");
   return commitOrderPickup(db,id,admin,{expectedReference,via});
 }
+// Prefer the dedicated account node. Legacy /sckc is supported only when the
+// canonical record is absent; a disabled canonical account never falls back.
+export async function loadCouncilAccount(db,username){
+  if(!ID.test(String(username||"")))throw pickupError("COUNCIL_REQUIRED");
+  const path=`sckcAccounts/${username}`,canonical=await get(ref(db,path));
+  if(canonical.exists())return {account:canonical.val(),path};
+  if(username==="sckc"){
+    const legacy=await get(ref(db,"sckc"));
+    if(legacy.exists())return {account:legacy.val(),path:"sckc"};
+  }
+  return {account:null,path};
+}
 // The council role can use only the handover path; it never becomes an admin.
 export async function confirmCouncilPickup(db,id,council,options={}){
   if(council?.role!=="pickup"||!ID.test(String(council.username||"")))throw pickupError("COUNCIL_REQUIRED");
   if(globalThis.navigator?.onLine===false)throw pickupError("OFFLINE");
-  const snapshot=await get(ref(db,`sckcAccounts/${council.username}`));
-  const account=snapshot.val();
-  if(!snapshot.exists()||account.enabled!==true||account.role!=="pickup"||account.credentialVersion!==council.credentialVersion)throw pickupError("COUNCIL_DISABLED");
+  const {account,path}=await loadCouncilAccount(db,council.username);
+  if(!account||account.enabled!==true||account.role!=="pickup"||account.credentialVersion!==council.credentialVersion||(council.accountPath&&council.accountPath!==path))throw pickupError("COUNCIL_DISABLED");
   return commitOrderPickup(db,id,council,options);
 }
 async function commitOrderPickup(db,id,actor,{expectedReference,expectedQuantity,via="manual"}={}){

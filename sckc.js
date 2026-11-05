@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 import { firebaseConfig } from "./firebase-config.js";
 import { subscribeOrderSummaries, loadOrderDetail } from "./order-data.js?v=20261103-complete3";
-import { parsePickupPayload, pickupEligibility, pickupMessage, pickupError, confirmCouncilPickup } from "./pickup-service.js?v=20261105-sckc1";
+import { parsePickupPayload, pickupEligibility, pickupMessage, pickupError, loadCouncilAccount, confirmCouncilPickup } from "./pickup-service.js?v=20261105-sckc-path2";
 import { verifyCouncilPassword, validCouncilAccount } from "./sckc-auth.js?v=20261105-sckc1";
 import { createStationScanner } from "./sckc-scanner.js?v=20261105-sckc1";
 
@@ -62,20 +62,20 @@ $("councilLoginForm").addEventListener("submit",async event=>{
   if(!/^[a-z0-9_-]{1,64}$/.test(user)){ $("loginMessage").textContent="กรุณาตรวจสอบชื่อผู้ใช้";return;}
   loginBusy=true;const ticket=++loginRequest;$("councilLoginButton").disabled=true;$("loginMessage").textContent="กำลังตรวจสอบบัญชี…";
   try{
-    const snap=await get(ref(db,`sckcAccounts/${user}`));const account=snap.val();
-    if(!snap.exists()||!await verifyCouncilPassword(account,pass))throw new Error("INVALID_LOGIN");
+    const {account,path:accountPath}=await loadCouncilAccount(db,user);
+    if(!account||!await verifyCouncilPassword(account,pass))throw new Error("INVALID_LOGIN");
     if(ticket!==loginRequest)return;
-    council={username:user,role:"pickup",credentialVersion:account.credentialVersion};sessionExpiresAt=Date.now()+SESSION_MS;
+    council={username:user,role:"pickup",credentialVersion:account.credentialVersion,accountPath};sessionExpiresAt=Date.now()+SESSION_MS;
     $("councilPassword").value="";$("loginMessage").textContent="";$("councilLogin").hidden=true;$("councilApp").hidden=false;
     sessionTimer=setTimeout(()=>{if(!confirmBusy)endSession("หมดเวลาการเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่");},SESSION_MS);
-    unsubscribeAccount=onValue(ref(db,`sckcAccounts/${user}`),snapshot=>{
+    unsubscribeAccount=onValue(ref(db,accountPath),snapshot=>{
       const latest=snapshot.val();
       if(council&&(!validCouncilAccount(latest)||latest.credentialVersion!==council.credentialVersion)){
         if(confirmBusy){sessionExpiresAt=0;return;}endSession("บัญชีถูกปิดหรือเปลี่ยนรหัสผ่าน กรุณาเข้าสู่ระบบใหม่");
       }
     },()=>{if(!confirmBusy)endSession("ตรวจสอบสิทธิ์บัญชีไม่ได้ กรุณาเข้าสู่ระบบใหม่");});
     startReads();show(location.hash==="#scan"?"scan":"overview",{push:false});
-  }catch(error){if(ticket===loginRequest)$("loginMessage").textContent=error.message==="SECURE_CONTEXT_REQUIRED"?"กรุณาเปิดผ่าน HTTPS เพื่อเข้าสู่ระบบ":String(error.code||"").toLowerCase().includes("permission")?"อ่านบัญชีไม่ได้ กรุณาให้ผู้ดูแลตรวจสิทธิ์ Database":"ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือยังไม่ได้นำเข้าบัญชีจุดรับ";}
+  }catch(error){if(ticket===loginRequest)$("loginMessage").textContent=error.message==="SECURE_CONTEXT_REQUIRED"?"กรุณาเปิดผ่าน HTTPS เพื่อเข้าสู่ระบบ":String(error.code||"").toLowerCase().includes("permission")?"อ่านบัญชีไม่ได้ กรุณาให้ผู้ดูแลตรวจสิทธิ์ Database":"ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือไม่พบบัญชีจุดรับที่ตั้งไว้";}
   finally{loginBusy=false;$("councilLoginButton").disabled=false;}
 });
 $("councilLogout").addEventListener("click",()=>{if(confirmBusy){toast("กรุณารอผลยืนยันก่อนออกจากระบบ");return;}endSession();});
