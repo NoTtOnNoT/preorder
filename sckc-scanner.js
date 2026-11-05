@@ -42,7 +42,7 @@ export function createStationScanner({video,message,onResult,onControls}){
       if(token!==epoch||!active){opened.getTracks().forEach(track=>track.stop());return;}
       stream=opened;video.muted=true;video.srcObject=opened;await video.play();
       if(token!==epoch||!active){opened.getTracks().forEach(track=>track.stop());return;}
-      controls(true);say("เล็ง QR ให้อยู่ในกรอบ ระบบจะเปิดชื่อและจำนวนให้ตรวจสอบ");frame(token);
+      controls(true);say("สแกน QR ให้อยู่ในกรอบ ระบบจะเปิดชื่อและจำนวนให้ตรวจสอบ");frame(token);
     }catch(error){
       opened?.getTracks().forEach(track=>track.stop());if(token!==epoch)return;stop();
       say(error.name==="NotAllowedError"?"ยังไม่ได้รับอนุญาตกล้อง เปิดการตั้งค่าเว็บไซต์ > กล้อง > อนุญาต แล้วกดเปิดกล้องอีกครั้ง หรือเลือกรูป QR แทน":error.name==="NotFoundError"?"ไม่พบกล้อง เลือกรูป QR หรือค้นหารหัสแทนได้":error.name==="NotReadableError"?"กล้องอาจถูกใช้งานอยู่ ปิดแอปที่ใช้กล้องแล้วลองใหม่":"เปิดกล้องไม่สำเร็จ ลองเปิดเว็บโดยตรงใน Chrome หรือ Safari หรือเลือกรูป QR แทน",true);
