@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./director.css">
-<link rel="stylesheet" href="./order-usage.css?v=20261103-complete3"><link rel="stylesheet" href="./pickup-qr.css?v=20261105-qr1"><link rel="stylesheet" href="./user-pickup-ui.css?v=20261105-user-ui2"></head>
+<link rel="stylesheet" href="./order-usage.css?v=20261103-complete3"><link rel="stylesheet" href="./pickup-qr.css?v=20261105-qr1"><link rel="stylesheet" href="./user-pickup-ui.css?v=20261105-schedule1"></head>
 <body>
   <div class="ambient"></div>
 
@@ -231,12 +231,16 @@
       </div>
 
       <div id="directorOrderQr"></div>
+      <details class="pickup-schedule" open>
+        <summary><span class="schedule-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="4" stroke="currentColor" stroke-width="1.7"/><path d="M7 3v4m10-4v4M3 11h18m-13 4h2m4 0h2m-8 3h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><span class="schedule-heading"><span class="schedule-kicker">นัดรับกับสภานักเรียน</span><strong>วัน–เวลารับกระเป๋า</strong><span class="schedule-preview">6–13 พฤศจิกายน 2569<span class="schedule-preview-hint"> · กดดูตาราง</span></span></span><span class="schedule-toggle"><span class="schedule-show">ดูตาราง</span><span class="schedule-hide">ย่อตาราง</span><b aria-hidden="true">⌄</b></span></summary>
+        <div class="schedule-body"><p class="schedule-intro">เตรียม QR ของคุณให้พร้อม แล้วแสดงให้สภานักเรียนสแกนที่จุดรับกระเป๋า</p><table class="schedule-table"><caption>ตารางเปิดรับกระเป๋า เดือนพฤศจิกายน 2569</caption><thead><tr><th scope="col">วันรับกระเป๋า</th><th scope="col">เวลาที่เปิดรับ</th></tr></thead><tbody><tr class="schedule-row first"><th scope="row"><time datetime="2026-11-06"><span class="schedule-date">6<small>พ.ย.</small></span><span class="schedule-weekday">วันศุกร์<small class="schedule-first-tag">วันแรก</small></span></time></th><td><strong>คาบที่ 1</strong><span>และคาบที่ 9 เป็นต้นไป</span></td></tr><tr class="schedule-row "><th scope="row"><time datetime="2026-11-09"><span class="schedule-date">9<small>พ.ย.</small></span><span class="schedule-weekday">วันจันทร์</span></time></th><td><strong>คาบที่ 9</strong><span>เป็นต้นไป</span></td></tr><tr class="schedule-row "><th scope="row"><time datetime="2026-11-10"><span class="schedule-date">10<small>พ.ย.</small></span><span class="schedule-weekday">วันอังคาร</span></time></th><td><strong>คาบที่ 9</strong><span>เป็นต้นไป</span></td></tr><tr class="schedule-row clock"><th scope="row"><time datetime="2026-11-11"><span class="schedule-date">11<small>พ.ย.</small></span><span class="schedule-weekday">วันพุธ</span></time></th><td><strong>16.15 น.</strong><span>เป็นต้นไป</span></td></tr><tr class="schedule-row clock"><th scope="row"><time datetime="2026-11-12"><span class="schedule-date">12<small>พ.ย.</small></span><span class="schedule-weekday">วันพฤหัสบดี</span></time></th><td><strong>16.15 น.</strong><span>เป็นต้นไป</span></td></tr><tr class="schedule-row "><th scope="row"><time datetime="2026-11-13"><span class="schedule-date">13<small>พ.ย.</small></span><span class="schedule-weekday">วันศุกร์</span></time></th><td><strong>คาบที่ 9</strong><span>เป็นต้นไป</span></td></tr></tbody></table><p class="schedule-note"><span aria-hidden="true">ⓘ</span> ตรวจสอบสถานะคำสั่งซื้อและการชำระเงินก่อนมารับกระเป๋า</p></div>
+      </details>
       <button id="successBack" class="primary" type="button">เสร็จสิ้น · กลับหน้าแรก</button>
     </div>
   </div>
 
   <div id="toast"></div>
 
-  <script type="module" src="./director.js?v=20261105-user-ui2"></script>
+  <script type="module" src="./director.js?v=20261105-schedule1"></script>
 </body>
 </html>

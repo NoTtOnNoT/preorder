@@ -1,4 +1,4 @@
-import { createPickupQrCard } from "./pickup-qr.js?v=20261105-user-ui2";
+import { createPickupQrCard } from "./pickup-qr.js?v=20261105-schedule1";
 import { customerOrderPath, indexedRootUpdates } from "./order-data.js?v=20261103-complete3";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, push, set, update, query, orderByChild, equalTo, serverTimestamp, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
@@ -603,12 +603,12 @@ function pickupLandingState(list,status){
   if(status!=="ready")return {state:status==="error"?"error":"loading",badge:status==="error"?"โหลดข้อมูลไม่สำเร็จ":"กำลังตรวจสอบรายการ",text:"กดเพื่อเปิดหน้ารับกระเป๋าและตรวจสอบข้อมูลอีกครั้ง"};
   if(!list.length)return {state:"empty",badge:"ยังไม่มีคำสั่งซื้อ",text:"เปิดดูข้อมูลการรับกระเป๋าและคำสั่งซื้อของคุณได้ที่นี่"};
   const remaining=list.filter(order=>!isBagReceived(order));
-  if(!remaining.length)return {state:"done",badge:"รับกระเป๋าครบแล้ว",text:"เปิดดูรายการที่รับแล้ว พร้อมวันและเวลายืนยันของเจ้าหน้าที่"};
+  if(!remaining.length)return {state:"done",badge:"รับกระเป๋าครบแล้ว",text:"เปิดดูรายการที่รับแล้ว พร้อมวันและเวลายืนยันของสภานักเรียน"};
   const paid=remaining.filter(order=>order.payment?.status==="verified");
   if(paid.length&&pickupConfigState.status!=="ready")return {state:"waiting",badge:"กำลังตรวจสอบสถานะรับสินค้า",text:"เปิด QR และติดตามสถานะรับกระเป๋าของคุณ"};
   const ready=paid.filter(order=>order.pickup?.status==="ready");
-  if(pickupOpen&&ready.length)return {state:"ready",badge:`พร้อมรับ ${ready.length} รายการ`,text:"เปิด QR แล้วแสดงให้เจ้าหน้าที่สแกนที่จุดรับกระเป๋า"};
-  if(paid.length)return {state:"waiting",badge:pickupOpen?"รอเจ้าหน้าที่เตรียมรับ":"ชำระเงินผ่านแล้ว · รอเปิดรับ",text:"เปิด QR ของคุณและติดตามประกาศการรับกระเป๋าได้ที่นี่"};
+  if(pickupOpen&&ready.length)return {state:"ready",badge:`พร้อมรับ ${ready.length} รายการ`,text:"เปิด QR แล้วแสดงให้สภานักเรียนสแกนที่จุดรับกระเป๋า"};
+  if(paid.length)return {state:"waiting",badge:pickupOpen?"รอสภานักเรียนเตรียมรับ":"ชำระเงินผ่านแล้ว · รอเปิดรับ",text:"เปิด QR ของคุณและติดตามประกาศการรับกระเป๋าได้ที่นี่"};
   if(remaining.some(order=>order.payment?.status==="rejected"))return {state:"issue",badge:"มีรายการต้องตรวจสอบ",text:"เปิดดูหมายเหตุการชำระเงินและข้อมูลคำสั่งซื้อของคุณ"};
   return {state:"pending",badge:"รอฝ่ายการเงินตรวจสอบ",text:"เปิด QR และติดตามผลตรวจการชำระเงินของคุณ"};
 }

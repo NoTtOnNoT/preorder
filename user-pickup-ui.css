@@ -55,3 +55,47 @@
 .pickup-launch-title{overflow-wrap:anywhere}
 @media(max-width:360px){.pickup-launch-art{width:63px;height:78px}.pickup-launch-art svg{width:38px;height:38px}.pickup-launch-title{font-size:29px}.pickup-launch-title>span{font-size:26px}#studentHub #pickupCard,#teacherHubScreen #teacherPickupCard{padding:23px 20px}}
 #studentHub .preorder-secondary>b,#teacherHubScreen .preorder-secondary>b{position:static!important;transform:none;line-height:1;flex-shrink:0}
+
+/* Pickup timetable: visible entry, easy-to-scan dates and separate time column. */
+.pickup-schedule,.pickup-schedule *{box-sizing:border-box}
+.pickup-schedule{display:block;width:100%;margin:0;border:1px solid #e3d5f5;border-radius:24px;background:#fff;box-shadow:0 12px 36px #552e7d0a;overflow:hidden;text-align:left;color:#342143}
+#studentHub .pickup-schedule,#teacherHubScreen .pickup-schedule{margin-top:18px}
+.pickup-schedule>summary{display:flex;align-items:center;gap:16px;list-style:none;cursor:pointer;padding:23px 25px;background:linear-gradient(115deg,#fcfaff,#f3edff);user-select:none}
+.pickup-schedule>summary::-webkit-details-marker{display:none}
+.pickup-schedule>summary::marker{content:""}
+.pickup-schedule>summary:focus-visible{outline:3px solid #9364dd;outline-offset:-4px;border-radius:23px}
+.schedule-icon{display:grid;place-items:center;flex:0 0 54px;width:54px;height:58px;border-radius:16px;background:#e9dcff;color:#6d36b4}
+.schedule-icon svg{display:block;width:29px;height:29px}
+.schedule-heading{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.schedule-kicker{font-size:11px;font-weight:600;letter-spacing:.3px;color:#855ca8}
+.schedule-heading>strong{font-size:23px;font-weight:700;line-height:1.5;color:#422454;letter-spacing:-.4px}
+.schedule-preview{font-size:12px;line-height:1.7;color:#887198}
+.pickup-schedule[open] .schedule-preview-hint{display:none}
+.schedule-toggle{display:flex;align-items:center;justify-content:center;gap:10px;flex-shrink:0;background:white;border:1px solid #dfcef4;border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.5;color:#6b38a6;font-weight:600}
+.schedule-toggle b{display:block;font-size:20px;line-height:1;transition:transform .18s ease}
+.schedule-hide{display:none}.pickup-schedule[open] .schedule-show{display:none}.pickup-schedule[open] .schedule-hide{display:inline}.pickup-schedule[open] .schedule-toggle b{transform:rotate(180deg)}
+.schedule-body{padding:0 25px 23px;border-top:1px solid #ece2f7}
+.schedule-intro{font-size:13px;line-height:1.85;margin:20px 0 15px;color:#806d8d}
+.schedule-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;border:1px solid #e9e1f1;border-radius:16px;overflow:hidden;background:white;text-align:left}
+.schedule-table caption{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.schedule-table thead th{width:50%;background:#f8f5fc;padding:11px 17px;font-size:11px;font-weight:600;color:#8b769c;text-align:left;border-bottom:1px solid #eee6f5}
+.schedule-table tbody th,.schedule-table tbody td{padding:15px 17px;vertical-align:middle;border-bottom:1px solid #eee6f5;text-align:left}
+.schedule-table tbody tr:last-child th,.schedule-table tbody tr:last-child td{border-bottom:0}
+.schedule-table time{display:flex;align-items:center;gap:14px;color:inherit}
+.schedule-date{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;width:47px;min-height:54px;border:1px solid #ece4f5;border-radius:12px;background:#faf7ff;color:#6733a0;font-size:25px;line-height:1.1;font-weight:700}
+.schedule-date small{margin-top:3px;font-size:10px;font-weight:500;color:#9a84ac}
+.schedule-weekday{display:flex;flex-wrap:wrap;align-items:center;gap:6px 9px;font-size:14px;line-height:1.6;font-weight:600;color:#5f4a70}
+.schedule-first-tag{display:inline-block;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:600;color:#975f13;background:#ffedc2;white-space:nowrap}
+.schedule-table td>strong{display:block;font-size:18px;font-weight:600;line-height:1.6;color:#5e2e97}
+.schedule-table td>span{display:block;font-size:12px;line-height:1.7;color:#9984aa}
+.schedule-row.first th,.schedule-row.first td{background:#fffbf0}
+.schedule-row.first .schedule-date{background:white;border-color:#f2dfb3;color:#926218}
+.schedule-row.first td>strong{color:#855612}.schedule-row.first td>span{color:#a07a3e}
+.schedule-row.clock td>strong{color:#276d72}
+.schedule-note{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.9;color:#9985a8;margin:17px 0 0}.schedule-note>span{font-size:15px;color:#926caf;flex-shrink:0}
+#directorOrderQr+.pickup-schedule{margin:18px 0;text-align:left}
+@media(max-width:600px){
+ .pickup-schedule{border-radius:20px}.pickup-schedule>summary{padding:18px 16px;gap:11px}.schedule-icon{flex-basis:42px;width:42px;height:47px;border-radius:13px}.schedule-icon svg{width:24px;height:24px}.schedule-heading>strong{font-size:19px}.schedule-kicker{font-size:10px}.schedule-preview{font-size:11px}.schedule-toggle{padding:8px 10px;gap:5px;font-size:11px}.schedule-body{padding:0 16px 18px}.schedule-intro{font-size:12px;margin-top:16px}.schedule-table thead th{padding:10px 11px}.schedule-table tbody th,.schedule-table tbody td{padding:12px 11px}.schedule-table time{gap:9px}.schedule-date{width:38px;min-height:48px;font-size:23px;border-radius:10px}.schedule-weekday{font-size:12px}.schedule-table td>strong{font-size:16px}.schedule-table td>span{font-size:11px}.schedule-note{font-size:11px}
+}
+@media(max-width:360px){.schedule-toggle{border:0;background:transparent;padding:3px}.schedule-toggle .schedule-show,.schedule-toggle .schedule-hide{display:none}.schedule-table time{gap:7px}.schedule-weekday{font-size:11px}.schedule-table td>strong{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.schedule-toggle b{transition:none}}
