@@ -6,6 +6,9 @@ const REFERENCE=/^[A-Za-z0-9_-]{1,96}$/;
 export function pickupError(code){return Object.assign(new Error(code),{code});}
 export function pickupMessage(error){
   const messages={
+    ORDER_CHANGED:"จำนวนกระเป๋ามีการเปลี่ยนแปลง กรุณาเปิดรายการล่าสุดแล้วตรวจสอบอีกครั้ง",
+    COUNCIL_REQUIRED:"กรุณาเข้าสู่ระบบสภานักเรียนก่อนยืนยันรับกระเป๋า",
+    COUNCIL_DISABLED:"บัญชีจุดรับนี้ถูกปิดหรือเปลี่ยนรหัสผ่าน กรุณาเข้าสู่ระบบใหม่",
     INVALID_QR:"QR นี้ไม่ใช่คำสั่งซื้อกระเป๋าของระบบ กรุณาเลือก QR ของคำสั่งซื้อ",
     ORDER_NOT_FOUND:"ไม่พบคำสั่งซื้อนี้ กรุณาตรวจสอบ QR อีกครั้ง",
     QR_MISMATCH:"QR ไม่ตรงกับคำสั่งซื้อ กรุณาเปิด QR ล่าสุดจากบัญชีผู้ซื้อ",
@@ -43,11 +46,24 @@ export function pickupEligibility(order,pickupOpen){
 }
 export async function confirmOrderPickup(db,id,admin,{expectedReference,via="manual"}={}){
   if(!admin||admin.role!=="admin"||!String(admin.username||"").trim())throw pickupError("ADMIN_REQUIRED");
+  return commitOrderPickup(db,id,admin,{expectedReference,via});
+}
+// The council role can use only the handover path; it never becomes an admin.
+export async function confirmCouncilPickup(db,id,council,options={}){
+  if(council?.role!=="pickup"||!ID.test(String(council.username||"")))throw pickupError("COUNCIL_REQUIRED");
+  if(globalThis.navigator?.onLine===false)throw pickupError("OFFLINE");
+  const snapshot=await get(ref(db,`sckcAccounts/${council.username}`));
+  const account=snapshot.val();
+  if(!snapshot.exists()||account.enabled!==true||account.role!=="pickup"||account.credentialVersion!==council.credentialVersion)throw pickupError("COUNCIL_DISABLED");
+  return commitOrderPickup(db,id,council,options);
+}
+async function commitOrderPickup(db,id,actor,{expectedReference,expectedQuantity,via="manual"}={}){
   if(!ID.test(String(id||"")))throw pickupError("INVALID_QR");
   if(globalThis.navigator?.onLine===false)throw pickupError("OFFLINE");
   const [before,config]=await Promise.all([get(ref(db,`preorders/${id}`)),get(ref(db,"systemConfig/pickupOpen"))]);
   if(!before.exists())throw pickupError("ORDER_NOT_FOUND");
   if(expectedReference!==undefined&&String(before.val().referenceCode||"")!==expectedReference)throw pickupError("QR_MISMATCH");
+  if(expectedQuantity!==undefined&&Number(before.val().order?.quantity)!==expectedQuantity)throw pickupError("ORDER_CHANGED");
   const initial=pickupEligibility(before.val(),config.val()===true);
   if(!initial.allowed)throw pickupError(initial.code);
   let refusal="NOT_COMMITTED";
@@ -56,9 +72,10 @@ export async function confirmOrderPickup(db,id,admin,{expectedReference,via="man
     // that null is a compare-and-set no-op; a non-empty server record causes a retry.
     if(current===null)return null;
     if(expectedReference!==undefined&&String(current.referenceCode||"")!==expectedReference){refusal="QR_MISMATCH";return;}
+    if(expectedQuantity!==undefined&&Number(current.order?.quantity)!==expectedQuantity){refusal="ORDER_CHANGED";return;}
     const state=pickupEligibility(current,true);
     if(!state.allowed){refusal=state.code;return;}
-    return {...current,status:"completed",pickup:{...current.pickup,status:"picked_up",pickedUpAt:serverTimestamp(),pickedUpBy:String(admin.username),confirmedVia:via==="qr"?"qr":"manual"}};
+    return {...current,status:"completed",pickup:{...current.pickup,status:"picked_up",pickedUpAt:serverTimestamp(),pickedUpBy:String(actor.username),confirmedVia:via==="qr"?"qr":"manual"}};
   },{applyLocally:false});
   if(!result.committed)throw pickupError(refusal);
   if(!result.snapshot.exists())throw pickupError("ORDER_NOT_FOUND");

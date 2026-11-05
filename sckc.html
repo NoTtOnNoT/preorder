@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#5125a0"><meta name="robots" content="noindex,nofollow">
+  <title>จุดรับกระเป๋า · สภานักเรียน</title>
+  <link rel="icon" href="./favicon.svg"><link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./sckc.css?v=20261105-sckc1">
+</head>
+<body>
+  <section id="councilLogin" class="login-shell">
+    <div class="login-brand"><span class="brand-mark" aria-hidden="true">S</span><span>STUDENT COUNCIL<br><strong>Say No Plastic</strong></span></div>
+    <main class="login-card">
+      <span class="eyebrow">สำหรับสภานักเรียนประจำจุดรับสินค้า</span>
+      <h1>พร้อมส่งต่อ<br><span>กระเป๋าใบใหม่</span></h1><p>สแกน ตรวจชื่อ แล้วส่งมอบกระเป๋า<br>ครบในหน้าเดียว</p>
+      <form id="councilLoginForm">
+        <label for="councilUsername">ชื่อผู้ใช้</label><input id="councilUsername" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="ชื่อบัญชีสภานักเรียน" maxlength="64">
+        <label for="councilPassword">รหัสผ่าน</label><input id="councilPassword" type="password" autocomplete="current-password" required placeholder="กรอกรหัสผ่าน">
+        <p id="loginMessage" class="message" role="status" aria-live="polite"></p><button id="councilLoginButton" class="primary wide" type="submit">เข้าสู่จุดรับกระเป๋า <span aria-hidden="true">→</span></button>
+      </form>
+      <small>บัญชีสำหรับรับสินค้า แยกจากบัญชีแอดมิน</small>
+    </main><p class="login-footer">สภานักเรียน · โรงเรียนสะเดา “ขรรค์ชัยกัมพลานนท์อนุสรณ์”</p>
+  </section>
+  <div id="councilApp" hidden>
+    <header class="app-header"><a class="app-brand" href="#overview" aria-label="กลับภาพรวม"><span class="brand-mark" aria-hidden="true">S</span><span><strong>จุดรับกระเป๋า</strong><small>สภานักเรียน · Say No Plastic</small></span></a><div class="header-actions"><span id="connectionStatus" class="connection" role="status">กำลังเชื่อมต่อ</span><button id="councilLogout" class="quiet" type="button">ออกจากระบบ</button></div></header>
+    <main class="workspace">
+      <section id="overviewView" class="screen" aria-labelledby="overviewTitle">
+        <div class="page-heading"><div><span class="eyebrow">PICKUP STATION</span><h1 id="overviewTitle">ส่งมอบให้ตรงคน<br class="mobile-break"> ครบทุกใบ</h1><p>เช็กชื่อ จำนวน และสถานะก่อนส่งมอบกระเป๋า</p></div><button id="refreshOrders" class="quiet" type="button">↻ โหลดรายการใหม่</button></div>
+        <button id="openStationScanner" class="scan-launch" type="button"><span><small>เริ่มรับกระเป๋าที่นี่</small><strong>สแกน QR รับกระเป๋า</strong><span>สแกน → ตรวจชื่อและจำนวน → กดยืนยัน</span><b>เปิดหน้าสแกน <i aria-hidden="true">↗</i></b></span><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M18 5H5v13m41-13h13v13M5 46v13h13m41-13v13H46M16 16h11v11H16zm21 0h11v11H37zM16 37h11v11H16zm21 0h5v5h-5zm11 0v11H37m0-5h5" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></button>
+        <section class="overview-stats" aria-label="ภาพรวมการรับกระเป๋า">
+          <article><span>คำสั่งซื้อทั้งหมด</span><strong id="stationTotalOrders">—</strong><small>รายการ</small></article>
+          <article><span>กระเป๋าทั้งหมด</span><strong id="stationTotalBags">—</strong><small>ใบ</small></article>
+          <article class="stat-waiting"><span>ยังไม่รับกระเป๋า</span><strong id="stationWaitingOrders">—</strong><small id="stationWaitingBags">— ใบ</small></article>
+          <article class="stat-done"><span>รับกระเป๋าแล้ว</span><strong id="stationReceivedOrders">—</strong><small id="stationReceivedBags">— ใบ</small></article>
+        </section>
+        <div class="handover-progress"><div><span>ส่งมอบกระเป๋าแล้ว</span><strong id="progressText">กำลังโหลด</strong></div><progress id="handoverProgress" value="0" max="100" aria-label="สัดส่วนกระเป๋าที่ส่งมอบแล้ว"></progress></div>
+        <section class="list-panel" aria-labelledby="listTitle">
+          <div class="list-heading"><div><span class="eyebrow">RECIPIENTS</span><h2 id="listTitle">รายชื่อรับกระเป๋า</h2></div><span id="listCount" class="count-pill">—</span></div>
+          <div class="filters" role="group" aria-label="เลือกสถานะรับกระเป๋า"><button type="button" data-filter="waiting" aria-pressed="true">ยังไม่รับ <span id="waitingTabCount">—</span></button><button type="button" data-filter="all" aria-pressed="false">ทั้งหมด</button><button type="button" data-filter="received" aria-pressed="false">รับแล้ว <span id="receivedTabCount">—</span></button></div>
+          <label class="search-label" for="recipientSearch">ค้นหารายชื่อ</label><div class="search-box"><span aria-hidden="true">⌕</span><input id="recipientSearch" type="search" placeholder="ชื่อ รหัสนักเรียน ชั้น/ห้อง เลขคำสั่งซื้อ หรือรหัสรับ" autocomplete="off"><button id="clearSearch" type="button" aria-label="ล้างคำค้น">×</button></div>
+          <div id="listMessage" class="list-message" role="status" aria-live="polite">กำลังโหลดรายชื่อ…</div><div id="recipientList" class="recipient-list"></div>
+          <nav id="listPagination" class="pagination" aria-label="เปลี่ยนหน้ารายชื่อ" hidden><button id="previousPage" class="quiet" type="button">← ก่อนหน้า</button><span id="pageLabel"></span><button id="nextPage" class="quiet" type="button">ถัดไป →</button></nav>
+        </section>
+      </section>
+      <section id="scanView" class="screen" hidden aria-labelledby="scanTitle">
+        <button class="back-link" data-route="overview" type="button">← กลับภาพรวม</button><div class="scan-heading"><span class="eyebrow">SCAN TO PICK UP</span><h1 id="scanTitle" tabindex="-1">สแกน QR ของผู้รับ</h1><p>ให้ผู้รับเปิด QR จากหน้ารับกระเป๋า แล้วเล็งให้อยู่ในกรอบ</p></div>
+        <div class="scanner-layout"><div class="camera-panel"><div id="stationCameraStage" class="camera-stage"><video id="stationCamera" autoplay muted playsinline aria-label="ภาพกล้องสำหรับสแกน QR"></video><div class="scan-frame" aria-hidden="true"></div><span class="camera-caption">QR คำสั่งซื้อกระเป๋า</span></div><p id="cameraMessage" class="camera-message" role="status" aria-live="polite">กดเปิดกล้อง แล้วกดอนุญาตในข้อความของเบราว์เซอร์</p><div class="camera-actions"><button id="startStationCamera" class="primary" type="button">เปิดกล้องเพื่อสแกน</button><button id="flipStationCamera" class="quiet" type="button" disabled>สลับกล้อง</button><button id="stopStationCamera" class="quiet" type="button" disabled>ปิดกล้อง</button></div></div>
+        <aside class="scan-alternatives"><span class="eyebrow">สแกนไม่ได้?</span><h2>เลือกวิธีอื่นได้เลย</h2><p>ใช้รูป QR หรือกรอกรหัสรับเพื่อเปิดรายการเดียวกัน</p><label class="file-button" for="stationQrFile">เลือกรูป QR <span aria-hidden="true">↗</span></label><input id="stationQrFile" type="file" accept="image/*" class="file-input"><form id="stationManualForm"><label for="stationManualCode">เลขคำสั่งซื้อ / รหัสรับ / ข้อมูล QR</label><input id="stationManualCode" placeholder="กรอกรหัสของผู้รับ" autocomplete="off" maxlength="260"><button id="manualLookup" class="secondary wide" type="submit">ค้นหารายการ →</button></form><details class="camera-help"><summary>เปิดกล้องไม่ได้ ทำอย่างไร?</summary><p>เปิดเว็บนี้โดยตรงใน Chrome หรือ Safari ผ่าน HTTPS หากเคยกดไม่อนุญาต ให้เปิดการตั้งค่าเว็บไซต์ แล้วอนุญาตกล้องอีกครั้ง</p><a id="directStationLink" href="./sckc.html#scan" target="_blank" rel="noopener">เปิดหน้าจุดรับในแท็บใหม่ ↗</a></details></aside></div>
+      </section>
+      <section id="detailView" class="screen" hidden aria-labelledby="recipientTitle">
+        <div class="detail-nav"><button class="back-link" data-route="overview" type="button">← กลับรายชื่อ</button><button id="detailScanNext" class="quiet" type="button">สแกนคนถัดไป ↗</button></div>
+        <div id="detailLoading" class="list-message" role="status">กำลังเปิดข้อมูลผู้รับ…</div>
+        <article id="handoverCard" class="handover-card" hidden>
+          <div class="handover-card-head"><span class="eyebrow">ตรวจสอบก่อนส่งมอบ</span><strong id="detailState" class="status-chip"></strong></div>
+          <div class="recipient-focus"><div><span class="field-label">ผู้รับกระเป๋า</span><h1 id="recipientTitle" tabindex="-1">—</h1><p id="recipientIdentity">—</p></div><div class="bag-quantity"><span>จำนวนกระเป๋า</span><strong id="detailBagCount">—</strong><small>ใบ</small></div></div>
+
+          <div id="receiptRecord" class="receipt-record" hidden><span aria-hidden="true">✓</span><div><strong id="receiptTime"></strong><p id="receiptStaff"></p></div></div>
+          <p id="handoverMessage" class="handover-message" role="status" aria-live="polite"></p>
+          <div class="confirm-area"><p id="confirmHint">ตรวจชื่อและจำนวนให้ตรงกับผู้รับก่อนกดยืนยัน</p><button id="confirmStationPickup" class="confirm-button" type="button" disabled><span aria-hidden="true">✓</span><span id="confirmButtonText">ยืนยันรับกระเป๋า</span><small id="confirmButtonQuantity"></small></button><button id="confirmedScanNext" class="primary wide" type="button" hidden>สแกนคนถัดไป →</button></div>
+          <details class="recipient-more"><summary>ข้อมูลติดต่อและเลขอ้างอิง <span aria-hidden="true">⌄</span></summary><dl class="recipient-information"><div><dt>รหัสนักเรียน</dt><dd id="detailStudentId">—</dd></div><div><dt>ชั้น / ห้อง</dt><dd id="detailClass">—</dd></div><div><dt>เบอร์โทรศัพท์</dt><dd id="detailPhone">—</dd></div><div><dt>เลขคำสั่งซื้อ</dt><dd id="detailReference">—</dd></div><div><dt>รหัสรับกระเป๋า</dt><dd id="detailPickupCode">—</dd></div><div><dt>ประเภทผู้รับ</dt><dd id="detailBuyerType">—</dd></div></dl></details>
+        </article><button id="retryDetail" class="secondary" type="button" hidden>โหลดข้อมูลผู้รับอีกครั้ง</button>
+      </section>
+    </main><footer class="app-footer">สภานักเรียน · ส่งมอบกระเป๋าให้ตรงคน ครบตามจำนวน</footer>
+  </div>
+  <div id="stationToast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="./sckc.js?v=20261105-sckc1"></script>
+</body>
+</html>
