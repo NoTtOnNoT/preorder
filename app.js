@@ -1,4 +1,4 @@
-import { createPickupQrCard } from "./pickup-qr.js?v=20261105-qr1";
+import { createPickupQrCard } from "./pickup-qr.js?v=20261105-user-ui2";
 import { customerOrderPath, indexedRootUpdates } from "./order-data.js?v=20261103-complete3";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, ref, push, set, update, query, orderByChild, equalTo, serverTimestamp, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
@@ -143,8 +143,6 @@ function renderOrderViews(kind){
   }else{
     renderTeacherHub();
     if(currentScreen==="teacherPickupScreen"){
-      renderTeacherOrdersList();
-      $("teacherOrdersSection").classList.toggle("hidden",orderLoads.teacher.status!=="ready"||!teacherOrders.length);
       renderTeacherPickupOrders();
       renderTeacherPickup();
     }
@@ -573,7 +571,7 @@ $("pickupCard").addEventListener("click",async()=>{
   renderOrderViews("student");
 });
 
-function renderPickup(){studentQrCard.render(studentOrder,pickupConfigState.status==="ready"?pickupOpen:null,orderLoads.student.status==="ready");renderLoadFeedback("student");if(renderPickupLoadState("student"))return;const o=studentOrder,c=o?.customer||{},status=o?.payment?.status||"none";$("pickupStudentId").textContent=studentSession?.studentId||"-";$("pickupStudentName").textContent=o?`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim():"ยังไม่มีข้อมูลผู้สั่งซื้อ";$("pickupStudentClass").textContent=o?`${c.level||"-"} / ห้อง ${c.room||"-"}`:"-";$("pickupStudentPhone").textContent=c.phone||"-";$("pickupOrderRef").textContent=o?.referenceCode||"-";$("pickupQty").textContent=o?`${o.order?.quantity||0} ใบ`:"-";$("pickupAmount").textContent=o?money(o.order?.totalAmount):"-";const hero=$("pickupStatusHero");$("pickupReadyPanel").classList.add("hidden");hero.className="pickup-status-hero waiting-status";
+function renderPickup(){studentQrCard.render(studentOrder,pickupConfigState.status==="ready"?pickupOpen:null,orderLoads.student.status==="ready",pickupConfigState.status);renderLoadFeedback("student");if(renderPickupLoadState("student"))return;const o=studentOrder,c=o?.customer||{},status=o?.payment?.status||"none";$("pickupStudentId").textContent=studentSession?.studentId||"-";$("pickupStudentName").textContent=o?`${c.prefix||""}${c.firstName||""} ${c.lastName||""}`.trim():"ยังไม่มีข้อมูลผู้สั่งซื้อ";$("pickupStudentClass").textContent=o?`${c.level||"-"} / ห้อง ${c.room||"-"}`:"-";$("pickupStudentPhone").textContent=c.phone||"-";$("pickupOrderRef").textContent=o?.referenceCode||"-";$("pickupQty").textContent=o?`${o.order?.quantity||0} ใบ`:"-";$("pickupAmount").textContent=o?money(o.order?.totalAmount):"-";const hero=$("pickupStatusHero");$("pickupReadyPanel").classList.add("hidden");hero.className="pickup-status-hero waiting-status";
   if(!o){$("pickupHeroIcon").textContent="!";$("pickupHeroTitle").textContent="ยังไม่ได้พรีออเดอร์";$("pickupHeroText").textContent="ต้องพรีออเดอร์กระเป๋าให้เรียบร้อยก่อนจึงจะใช้ฟังก์ชันการรับกระเป๋าได้";$("pickupFinanceStatus").textContent="ยังไม่มีรายการ";return;}
   if(status==="pending"){$("pickupHeroIcon").textContent="⌛";$("pickupHeroTitle").textContent="รอฝ่ายการเงินตรวจสอบ";$("pickupHeroText").textContent="ได้รับคำสั่งซื้อและสลิปแล้ว ฝ่ายการเงินกำลังตรวจสอบยอดกับบัญชีธนาคาร";$("pickupFinanceStatus").textContent="รอตรวจสอบ";return;}
   if(status==="rejected"){hero.className="pickup-status-hero rejected-status";$("pickupHeroIcon").textContent="!";$("pickupHeroTitle").textContent="การชำระเงินมีปัญหา";$("pickupHeroText").textContent=o.payment?.financeNote||"ฝ่ายการเงินไม่สามารถยืนยันการชำระเงินได้ กรุณาติดต่อฝ่ายการเงิน";$("pickupFinanceStatus").textContent="มีปัญหา";return;}
@@ -600,148 +598,62 @@ async function refreshStudentOrder(){
   return refreshCustomerOrders("student",orderIdentity("student"));
 }
 
+function isBagReceived(order){return order.pickup?.status==="picked_up"||order.pickup?.pickedUpAt!=null||order.status==="completed";}
+function pickupLandingState(list,status){
+  if(status!=="ready")return {state:status==="error"?"error":"loading",badge:status==="error"?"โหลดข้อมูลไม่สำเร็จ":"กำลังตรวจสอบรายการ",text:"กดเพื่อเปิดหน้ารับกระเป๋าและตรวจสอบข้อมูลอีกครั้ง"};
+  if(!list.length)return {state:"empty",badge:"ยังไม่มีคำสั่งซื้อ",text:"เปิดดูข้อมูลการรับกระเป๋าและคำสั่งซื้อของคุณได้ที่นี่"};
+  const remaining=list.filter(order=>!isBagReceived(order));
+  if(!remaining.length)return {state:"done",badge:"รับกระเป๋าครบแล้ว",text:"เปิดดูรายการที่รับแล้ว พร้อมวันและเวลายืนยันของเจ้าหน้าที่"};
+  const paid=remaining.filter(order=>order.payment?.status==="verified");
+  if(paid.length&&pickupConfigState.status!=="ready")return {state:"waiting",badge:"กำลังตรวจสอบสถานะรับสินค้า",text:"เปิด QR และติดตามสถานะรับกระเป๋าของคุณ"};
+  const ready=paid.filter(order=>order.pickup?.status==="ready");
+  if(pickupOpen&&ready.length)return {state:"ready",badge:`พร้อมรับ ${ready.length} รายการ`,text:"เปิด QR แล้วแสดงให้เจ้าหน้าที่สแกนที่จุดรับกระเป๋า"};
+  if(paid.length)return {state:"waiting",badge:pickupOpen?"รอเจ้าหน้าที่เตรียมรับ":"ชำระเงินผ่านแล้ว · รอเปิดรับ",text:"เปิด QR ของคุณและติดตามประกาศการรับกระเป๋าได้ที่นี่"};
+  if(remaining.some(order=>order.payment?.status==="rejected"))return {state:"issue",badge:"มีรายการต้องตรวจสอบ",text:"เปิดดูหมายเหตุการชำระเงินและข้อมูลคำสั่งซื้อของคุณ"};
+  return {state:"pending",badge:"รอฝ่ายการเงินตรวจสอบ",text:"เปิด QR และติดตามผลตรวจการชำระเงินของคุณ"};
+}
+function updatePickupLanding(kind){
+  const student=kind==="student",list=student?studentOrders:teacherOrders,status=orderLoads[kind].status;
+  const state=pickupLandingState(list,status);
+  const button=$(student?"pickupCard":"teacherPickupCard"),badge=$(student?"pickupStatusBadge":"teacherPickupStatusBadge");
+  button.classList.remove("locked");button.dataset.pickupState=state.state;
+  badge.className="status-pill pickup-launch-badge";badge.textContent=state.badge;
+  $(student?"pickupCardText":"teacherPickupCardText").textContent=state.text;
+  const prefix=student?"student":"teacher";
+  $(prefix+"StatTotal").textContent=status==="ready"?list.length:"—";
+  $(prefix+"StatPending").textContent=status==="ready"?list.filter(order=>!isBagReceived(order)&&(order.payment?.status||"pending")==="pending").length:"—";
+  $(prefix+"StatReady").textContent=status==="ready"&&pickupConfigState.status==="ready"?list.filter(order=>!isBagReceived(order)&&pickupOpen&&order.payment?.status==="verified"&&order.pickup?.status==="ready").length:"—";
+  $(student?"preorderStatusBadge":"teacherPreorderStatusBadge").textContent=isPreorderOpen()?"เปิดรับพรีออเดอร์":"ปิดรับพรีออเดอร์แล้ว";
+}
 function renderStudentHub(){
-  renderLoadFeedback("student");
-  const section=$("studentOrdersSection");
-  if(orderLoads.student.status!=="ready"){
-    section.classList.add("hidden");
-    ["studentStatTotal","studentStatPending","studentStatReady"].forEach(id=>$(id).textContent="—");
-    $("studentOrdersCount").textContent="ยังตรวจสอบไม่ได้";
-    $("preorderStatusBadge").textContent="ยังตรวจสอบรายการไม่ได้";
-    $("pickupStatusBadge").className="status-pill pending";
-    $("pickupStatusBadge").textContent=orderLoads.student.status==="error"?"โหลดข้อมูลไม่สำเร็จ":"กำลังโหลดข้อมูล";
-    $("pickupCard").classList.remove("locked");
-    $("pickupCardText").textContent="แตะเพื่อโหลดข้อมูลและตรวจสอบสถานะอีกครั้ง";
-    return;
-  }
-  const latestCustomer=studentOrders[0]?.customer||null;
-  const studentName=latestCustomer
-    ? `${latestCustomer.prefix||""}${latestCustomer.firstName||""} ${latestCustomer.lastName||""}`.trim()
-    : "";
-
-  if($("studentHubGreeting")){
-    $("studentHubGreeting").textContent=studentName
-      ? `สวัสดี ${studentName}`
-      : `สวัสดี ${studentSession?.studentId||""}`;
-  }
-
-  if($("hubStudentType")){
-    const typeText=studentSession?.type==="secondary"?"นักเรียนมัธยม":"นักเรียน ปวช.";
-    $("hubStudentType").textContent=studentName
-      ? `${typeText} · รหัส ${studentSession?.studentId||"-"}`
-      : typeText;
-  }
-  $("studentOrdersCount").textContent=`${studentOrders.length} รายการ`;
-  const statPending=studentOrders.filter(o=>(o.payment?.status||"pending")==="pending").length;
-  const statReady=pickupOpen?studentOrders.filter(o=>(o.pickup?.status||"locked")==="ready").length:0;
-  $("studentStatTotal").textContent=studentOrders.length;
-  $("studentStatPending").textContent=statPending;
-  $("studentStatReady").textContent=statReady;
-
-  if(!studentOrders.length){
-    section.classList.add("hidden");
-    $("preorderStatusBadge").className="status-pill neutral";
-    $("preorderStatusBadge").textContent="ยังไม่มีคำสั่งซื้อ";
-    $("pickupStatusBadge").className="status-pill locked-pill";
-    $("pickupStatusBadge").textContent="ยังไม่พร้อมใช้งาน";
-    $("pickupCard").classList.add("locked");
-    $("pickupCardText").textContent="ต้องพรีออเดอร์และผ่านการตรวจสอบจากฝ่ายการเงินก่อน";
-    return;
-  }
-
-  section.classList.remove("hidden");
-  renderStudentOrdersList();
-
-  const verifiedCount=studentOrders.filter(o=>(o.payment?.status||"pending")==="verified").length;
-  const pendingCount=studentOrders.filter(o=>(o.payment?.status||"pending")==="pending").length;
-  const rejectedCount=studentOrders.filter(o=>(o.payment?.status||"pending")==="rejected").length;
-
-  $("preorderStatusBadge").className="status-pill neutral";
-  $("preorderStatusBadge").textContent=`มี ${studentOrders.length} คำสั่งซื้อ · พรีออเดอร์เพิ่มได้`;
-
-  if(pickupConfigState.status!=="ready")$("studentStatReady").textContent="—";
-  if(verifiedCount>0 && pickupConfigState.status!=="ready"){
-    $("pickupCard").classList.remove("locked");
-    $("pickupStatusBadge").className="status-pill pending";
-    $("pickupStatusBadge").textContent="ยังตรวจสอบสถานะรับสินค้าไม่ได้";
-    $("pickupCardText").textContent="ชำระเงินผ่านแล้ว · กรุณาลองโหลดสถานะการรับสินค้าใหม่";
-    return;
-  }
-  if(verifiedCount>0 && pickupOpen){
-    const readyCount=studentOrders.filter(o=>(o.pickup?.status||"locked")==="ready").length;
-    $("pickupCard").classList.remove("locked");
-    $("pickupStatusBadge").className="status-pill verified";
-    $("pickupStatusBadge").textContent=readyCount>0?`พร้อมรับ ${readyCount} รายการ`:"รอแอดมินอัปเดต";
-    $("pickupCardText").textContent="แตะเพื่อดูสถานะและรหัสรับสินค้าของแต่ละคำสั่งซื้อ";
-  }else if(verifiedCount>0 && !pickupOpen){
-    $("pickupCard").classList.remove("locked");
-    $("pickupStatusBadge").className="status-pill pending";
-    $("pickupStatusBadge").textContent="ชำระเงินผ่านแล้ว · รอเปิดรับ";
-    $("pickupCardText").textContent="สินค้ายังอยู่ในช่วงพรีออเดอร์ รอแอดมินประกาศเปิดรับสินค้า";
-  }else{
-    $("pickupCard").classList.add("locked");
-    $("pickupStatusBadge").className=`status-pill ${rejectedCount>0?"rejected":"locked-pill"}`;
-    $("pickupStatusBadge").textContent=pendingCount>0?`รอตรวจ ${pendingCount} รายการ`:"ยังไม่มีรายการพร้อมรับ";
-    $("pickupCardText").textContent="แตะเพื่อดูสถานะของคำสั่งซื้อทั้งหมด";
-  }
+  renderLoadFeedback("student");updatePickupLanding("student");
+  const customer=studentOrders[0]?.customer;
+  const name=customer?`${customer.prefix||""}${customer.firstName||""} ${customer.lastName||""}`.trim():"";
+  $("studentHubGreeting").textContent=name?`สวัสดี ${name}`:`สวัสดี ${studentSession?.studentId||""}`;
+  const type=studentSession?.type==="vocational"?"นักเรียน ปวช.":"นักเรียนมัธยม";
+  $("hubStudentType").textContent=`${type} · รหัส ${studentSession?.studentId||"-"}`;
 }
 
-function renderStudentOrdersList(){
-  $("studentOrdersList").innerHTML=studentOrders.map((o,i)=>{
-    const st=o.payment?.status||"pending";
-    return `<article class="order-history-card">
-      <div class="order-history-top">
-        <div><small>ORDER ${studentOrders.length-i}</small><strong>${escapeHtml(o.referenceCode||"-")}</strong></div>
-        <span class="status-pill ${st}">${paymentLabel(st)}</span>
-      </div>
-      <div class="order-history-info">
-        <div><span>จำนวน</span><strong>${Number(o.order?.quantity||0)} ใบ</strong></div>
-        <div><span>ยอด</span><strong>${money(o.order?.totalAmount||0)}</strong></div>
-        <div><span>วันที่</span><strong>${orderDate(o.createdAt)}</strong></div>
-      </div>
-      <div class="order-card-actions"><button type="button" class="order-view-btn" data-detail-student="${o.id}">รายละเอียด</button><button type="button" class="order-view-btn" data-student-order="${o.id}">สถานะการรับ →</button></div>
-    </article>`;
+function renderCustomerPickupOrders(kind){
+  const student=kind==="student",list=student?studentOrders:teacherOrders,selected=student?studentOrder:teacherOrder;
+  const prefix=student?"student":"teacher",box=$(prefix+"PickupOrderSelector");
+  $(prefix+"PickupOrderCount").textContent=`${list.length} รายการ`;
+  box.classList.toggle("hidden",orderLoads[kind].status!=="ready"||list.length<=1);
+  if(orderLoads[kind].status!=="ready")return;
+  $(prefix+"PickupOrderList").innerHTML=list.map((order,index)=>{
+    const done=isBagReceived(order),ready=!done&&pickupOpen&&pickupConfigState.status==="ready"&&order.payment?.status==="verified"&&order.pickup?.status==="ready";
+    const status=done?"รับแล้ว":ready?"พร้อมรับ":order.payment?.status==="rejected"?"ตรวจชำระเงิน":order.payment?.status==="verified"?"รอเปิดรับ":"รอการเงิน";
+    const active=order.id===selected?.id;
+    return `<button type="button" class="pickup-order-item ${active?"active":""}" data-pick-${prefix}="${order.id}" aria-pressed="${active}"><span class="pickup-order-top"><strong>รายการที่ ${index+1}</strong><em class="${done?"is-done":ready?"is-ready":"is-waiting"}">${status}</em></span><span class="pickup-order-quantity">${Number(order.order?.quantity||0)} ใบ <small>· ${money(order.order?.totalAmount||0)}</small></span><span class="pickup-order-reference">${escapeHtml(order.referenceCode||"-")}</span></button>`;
   }).join("");
-
-  document.querySelectorAll("[data-detail-student]").forEach(btn=>btn.addEventListener("click",()=>openOrderDetail(studentOrders.find(o=>o.id===btn.dataset.detailStudent))));
-  document.querySelectorAll("[data-student-order]").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      studentOrder=studentOrders.find(o=>o.id===btn.dataset.studentOrder)||studentOrders[0]||null;
-      renderStudentPickupOrders();
-      renderPickup();
-      showScreen("pickupScreen");
-    });
-  });
+  document.querySelectorAll(`[data-pick-${prefix}]`).forEach(button=>button.addEventListener("click",()=>{
+    const order=list.find(item=>item.id===button.getAttribute(`data-pick-${prefix}`))||null;
+    if(student)studentOrder=order;else teacherOrder=order;
+    renderCustomerPickupOrders(kind);
+    if(student)renderPickup();else renderTeacherPickup();
+  }));
 }
-
-function renderStudentPickupOrders(){
-  if(orderLoads.student.status!=="ready"){$("studentPickupOrderSelector").classList.add("hidden");return;}
-  const box=$("studentPickupOrderSelector");
-  $("studentPickupOrderCount").textContent=`${studentOrders.length} รายการ`;
-  if(studentOrders.length<=1){
-    box.classList.toggle("hidden",studentOrders.length===0);
-  }else{
-    box.classList.remove("hidden");
-  }
-
-  $("studentPickupOrderList").innerHTML=studentOrders.map(o=>{
-    const st=o.payment?.status||"pending";
-    const active=studentOrder?.id===o.id?"active":"";
-    return `<button type="button" class="pickup-order-item ${active}" data-pick-student="${o.id}">
-      <strong>${escapeHtml(o.referenceCode||"-")}</strong>
-      <span>${Number(o.order?.quantity||0)} ใบ · ${money(o.order?.totalAmount||0)}</span>
-      <em class="${st}">${paymentLabel(st)}</em>
-    </button>`;
-  }).join("");
-
-  document.querySelectorAll("[data-pick-student]").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      studentOrder=studentOrders.find(o=>o.id===btn.dataset.pickStudent)||null;
-      renderStudentPickupOrders();
-      renderPickup();
-    });
-  });
-}
+function renderStudentPickupOrders(){renderCustomerPickupOrders("student");}
 
 function resetStudentOrder(){$("studentOrderForm").reset();studentContactType="facebook";studentSlip=null;studentSlipMeta=null;studentStep=1;populateLevels();fillQty($("sQuantity"));$("sSlipPreview").classList.add("hidden");$("sTotal").textContent="฿129";$("sPayAmount").textContent="฿129";$("sQr").src="./qr/qr-1.png";$("sQrInfo").textContent="สำหรับ 1 ใบ";$("sideStudentId").textContent=studentSession.studentId;updateStudentSide();goStudentStep(1);}
 $("studentOrderForm").addEventListener("submit",async e=>{
@@ -857,143 +769,17 @@ async function refreshTeacherOrder(phone){
 }
 
 function renderTeacherHub(){
-  renderLoadFeedback("teacher");
-  if(orderLoads.teacher.status!=="ready"){
-    $("teacherOrdersSection").classList.add("hidden");
-    ["teacherStatTotal","teacherStatPending","teacherStatReady"].forEach(id=>$(id).textContent="—");
-    $("teacherPreorderStatusBadge").textContent="ยังตรวจสอบรายการไม่ได้";
-    $("teacherPickupStatusBadge").className="status-pill pending";
-    $("teacherPickupStatusBadge").textContent=orderLoads.teacher.status==="error"?"โหลดข้อมูลไม่สำเร็จ":"กำลังโหลดข้อมูล";
-    $("teacherPickupCardText").textContent="แตะเพื่อโหลดข้อมูลและตรวจสอบสถานะอีกครั้ง";
-    return;
-  }
-  const latestCustomer=teacherOrders[0]?.customer||null;
-  const teacherName=latestCustomer
-    ? `${latestCustomer.prefix||""}${latestCustomer.firstName||""} ${latestCustomer.lastName||""}`.trim()
-    : "";
-
-  if($("teacherHubGreeting")){
-    $("teacherHubGreeting").textContent=teacherName
-      ? `สวัสดี ${teacherName}`
-      : "สำหรับคุณครู";
-  }
-
-  if($("teacherHubIdentity")){
-    $("teacherHubIdentity").textContent=teacherName
-      ? `เข้าสู่ระบบด้วยเบอร์ ${teacherLookupPhone} · เลือกพรีออเดอร์ใหม่หรือดูรายการเดิม`
-      : `เข้าสู่ระบบด้วยเบอร์ ${teacherLookupPhone} · ยังไม่มีข้อมูลชื่อจากการพรีออเดอร์`;
-  }
-
-  if($("teacherTopbarPhone"))$("teacherTopbarPhone").textContent=teacherLookupPhone||"-";
-
-  $("teacherStatTotal").textContent=teacherOrders.length;
-  $("teacherStatPending").textContent=teacherOrders.filter(o=>(o.payment?.status||"pending")==="pending").length;
-  $("teacherStatReady").textContent=pickupOpen
-    ? teacherOrders.filter(o=>(o.pickup?.status||"locked")==="ready").length
-    : 0;
-
-  if(!teacherOrders.length){
-    $("teacherPreorderStatusBadge").className="status-pill neutral";
-    $("teacherPreorderStatusBadge").textContent="เริ่มพรีออเดอร์";
-    $("teacherPickupCard").classList.remove("locked");
-    $("teacherPickupStatusBadge").className="status-pill neutral";
-    $("teacherPickupStatusBadge").textContent="ยังไม่มีรายการ";
-    $("teacherPickupCardText").textContent="เมื่อพรีออเดอร์แล้ว รายการของคุณจะแสดงที่นี่";
-    return;
-  }
-
-  const verifiedCount=teacherOrders.filter(o=>(o.payment?.status||"pending")==="verified").length;
-  const pendingCount=teacherOrders.filter(o=>(o.payment?.status||"pending")==="pending").length;
-  const rejectedCount=teacherOrders.filter(o=>(o.payment?.status||"pending")==="rejected").length;
-
-  $("teacherPreorderStatusBadge").className="status-pill neutral";
-  $("teacherPreorderStatusBadge").textContent=`มี ${teacherOrders.length} คำสั่งซื้อ · สั่งเพิ่มได้`;
-
-  $("teacherPickupCard").classList.remove("locked");
-
-  if(pickupConfigState.status!=="ready")$("teacherStatReady").textContent="—";
-  if(verifiedCount>0 && pickupConfigState.status!=="ready"){
-    $("teacherPickupCard").classList.remove("locked");
-    $("teacherPickupStatusBadge").className="status-pill pending";
-    $("teacherPickupStatusBadge").textContent="ยังตรวจสอบสถานะรับสินค้าไม่ได้";
-    $("teacherPickupCardText").textContent="ชำระเงินผ่านแล้ว · กรุณาลองโหลดสถานะการรับสินค้าใหม่";
-    return;
-  }
-  if(verifiedCount>0 && pickupOpen){
-    const readyCount=teacherOrders.filter(o=>(o.pickup?.status||"locked")==="ready").length;
-    $("teacherPickupStatusBadge").className="status-pill verified";
-    $("teacherPickupStatusBadge").textContent=readyCount>0?`พร้อมรับ ${readyCount} รายการ`:"ดูรายการของฉัน";
-    $("teacherPickupCardText").textContent="ดูสถานะการเงินและสถานะการรับสินค้าของทุกคำสั่งซื้อ";
-  }else if(verifiedCount>0){
-    $("teacherPickupStatusBadge").className="status-pill pending";
-    $("teacherPickupStatusBadge").textContent="ชำระเงินผ่านแล้ว · รอเปิดรับ";
-    $("teacherPickupCardText").textContent="ดูรายการที่ชำระผ่านแล้วและรายการอื่น ๆ";
-  }else{
-    $("teacherPickupStatusBadge").className=`status-pill ${rejectedCount>0?"rejected":"pending"}`;
-    $("teacherPickupStatusBadge").textContent=pendingCount>0?`รอตรวจ ${pendingCount} รายการ`:"ดูรายการของฉัน";
-    $("teacherPickupCardText").textContent="ดูรายการพรีออเดอร์และสถานะของแต่ละรายการ";
-  }
+  renderLoadFeedback("teacher");updatePickupLanding("teacher");
+  const customer=teacherOrders[0]?.customer;
+  const name=customer?`${customer.prefix||""}${customer.firstName||""} ${customer.lastName||""}`.trim():"";
+  $("teacherHubGreeting").textContent=name?`สวัสดี ${name}`:"สำหรับคุณครู";
+  $("teacherHubIdentity").textContent=`บัญชีครู · ${teacherLookupPhone||"-"}`;
+  $("teacherTopbarPhone").textContent=teacherLookupPhone||"-";
 }
-
-function renderTeacherOrdersList(){
-  $("teacherOrdersList").innerHTML=teacherOrders.map((o,i)=>{
-    const st=o.payment?.status||"pending";
-    return `<article class="order-history-card">
-      <div class="order-history-top">
-        <div><small>ORDER ${teacherOrders.length-i}</small><strong>${escapeHtml(o.referenceCode||"-")}</strong></div>
-        <span class="status-pill ${st}">${paymentLabel(st)}</span>
-      </div>
-      <div class="order-history-info">
-        <div><span>จำนวน</span><strong>${Number(o.order?.quantity||0)} ใบ</strong></div>
-        <div><span>ยอด</span><strong>${money(o.order?.totalAmount||0)}</strong></div>
-        <div><span>วันที่</span><strong>${orderDate(o.createdAt)}</strong></div>
-      </div>
-      <div class="order-card-actions"><button type="button" class="order-view-btn" data-detail-teacher="${o.id}">รายละเอียด</button><button type="button" class="order-view-btn" data-teacher-order="${o.id}">สถานะการรับ →</button></div>
-    </article>`;
-  }).join("");
-
-  document.querySelectorAll("[data-detail-teacher]").forEach(btn=>btn.addEventListener("click",()=>openOrderDetail(teacherOrders.find(o=>o.id===btn.dataset.detailTeacher))));
-  document.querySelectorAll("[data-teacher-order]").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      teacherOrder=teacherOrders.find(o=>o.id===btn.dataset.teacherOrder)||teacherOrders[0]||null;
-      renderTeacherPickupOrders();
-      renderTeacherPickup();
-      showScreen("teacherPickupScreen");
-    });
-  });
-}
-
-function renderTeacherPickupOrders(){
-  if(orderLoads.teacher.status!=="ready"){$("teacherPickupOrderSelector").classList.add("hidden");return;}
-  const box=$("teacherPickupOrderSelector");
-  $("teacherPickupOrderCount").textContent=`${teacherOrders.length} รายการ`;
-  if(teacherOrders.length<=1){
-    box.classList.toggle("hidden",teacherOrders.length===0);
-  }else{
-    box.classList.remove("hidden");
-  }
-
-  $("teacherPickupOrderList").innerHTML=teacherOrders.map(o=>{
-    const st=o.payment?.status||"pending";
-    const active=teacherOrder?.id===o.id?"active":"";
-    return `<button type="button" class="pickup-order-item ${active}" data-pick-teacher="${o.id}">
-      <strong>${escapeHtml(o.referenceCode||"-")}</strong>
-      <span>${Number(o.order?.quantity||0)} ใบ · ${money(o.order?.totalAmount||0)}</span>
-      <em class="${st}">${paymentLabel(st)}</em>
-    </button>`;
-  }).join("");
-
-  document.querySelectorAll("[data-pick-teacher]").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      teacherOrder=teacherOrders.find(o=>o.id===btn.dataset.pickTeacher)||null;
-      renderTeacherPickupOrders();
-      renderTeacherPickup();
-    });
-  });
-}
+function renderTeacherPickupOrders(){renderCustomerPickupOrders("teacher");}
 
 function renderTeacherPickup(){
-  teacherQrCard.render(teacherOrder,pickupConfigState.status==="ready"?pickupOpen:null,orderLoads.teacher.status==="ready");
+  teacherQrCard.render(teacherOrder,pickupConfigState.status==="ready"?pickupOpen:null,orderLoads.teacher.status==="ready",pickupConfigState.status);
   renderLoadFeedback("teacher");
   if(renderPickupLoadState("teacher"))return;
   const o=teacherOrder,c=o?.customer||{},status=o?.payment?.status||"none";

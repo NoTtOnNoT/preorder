@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css?v=20261103-pickup1">
-<link rel="stylesheet" href="./pickup-qr.css?v=20261105-qr1"></head>
+<link rel="stylesheet" href="./pickup-qr.css?v=20261105-qr1"><link rel="stylesheet" href="./user-pickup-ui.css?v=20261105-user-ui2"></head>
 <body>
   <div class="ambient"><i></i><i></i><i></i></div>
   <div id="networkBanner" class="network-banner hidden">
@@ -120,27 +120,20 @@
     </header>
     <div class="hub-shell">
       <div class="hub-head"><span class="eyebrow">STUDENT COUNCIL</span><h2 id="studentHubGreeting">สวัสดี</h2><p id="hubStudentType">-</p></div>
+
+      <div class="function-grid user-action-stack">
+        <button id="pickupCard" class="function-card pickup pickup-launch-card" type="button">
+          <span class="pickup-launch-copy"><span class="pickup-launch-kicker">รับกระเป๋าของคุณที่นี่</span><strong class="pickup-launch-title">รับกระเป๋า <span>/ เปิด QR</span></strong><span id="pickupCardText" class="pickup-launch-description">เปิด QR ของคุณ แล้วแสดงให้เจ้าหน้าที่สแกน</span><span class="pickup-launch-bottom"><span id="pickupStatusBadge" class="status-pill neutral">กำลังตรวจสอบรายการ</span><span class="pickup-launch-link">กดที่นี่เพื่อเปิด QR <b aria-hidden="true">↗</b></span></span></span>
+          <span class="pickup-launch-art" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M18 5H7a2 2 0 0 0-2 2v11m41-13h11a2 2 0 0 1 2 2v11M5 46v11a2 2 0 0 0 2 2h11m41-13v11a2 2 0 0 1-2 2H46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><path d="M16 16h11v11H16zm21 0h11v11H37zM16 37h11v11H16zm21 0h5v5h-5zm11 0v11H37m0-5h5" stroke="currentColor" stroke-width="3.5"/></svg><span>SCAN &amp; PICK UP</span></span>
+        </button>
+        <button id="studentPreorderCard" class="function-card preorder preorder-secondary" type="button"><span class="preorder-secondary-copy"><strong>พรีออเดอร์กระเป๋า</strong><span>ดูขั้นตอนสั่งซื้อกระเป๋า</span></span><span id="preorderStatusBadge" class="status-pill neutral">ตรวจสอบช่วงเปิดรับ</span><b aria-hidden="true">→</b></button>
+      </div>
       <div class="portal-stats">
         <div><span>คำสั่งซื้อ</span><strong id="studentStatTotal">0</strong></div>
         <div><span>รอตรวจสอบ</span><strong id="studentStatPending">0</strong></div>
         <div><span>พร้อมรับ</span><strong id="studentStatReady">0</strong></div>
       </div>
-      <div class="function-grid">
-        <button id="studentPreorderCard" class="function-card preorder" type="button">
-          <div class="function-icon">👜</div><div class="function-content"><span>FUNCTION 01</span><h3>พรีออเดอร์กระเป๋า</h3><p>กรอกข้อมูล เลือกจำนวน ชำระเงิน และแนบสลิป</p><div id="preorderStatusBadge" class="status-pill neutral">ยังไม่มีคำสั่งซื้อ</div></div><b>→</b>
-        </button>
-        <button id="pickupCard" class="function-card pickup locked" type="button">
-          <div class="function-icon">✓</div><div class="function-content"><span>FUNCTION 02</span><h3>การรับกระเป๋า</h3><p id="pickupCardText">ต้องพรีออเดอร์และผ่านการตรวจสอบจากฝ่ายการเงินก่อน</p><div id="pickupStatusBadge" class="status-pill locked-pill">ยังไม่พร้อมใช้งาน</div></div><b>→</b>
-        </button>
-      </div>
-      <section id="studentOrdersSection" class="multi-orders-section hidden">
-        <div class="multi-orders-head">
-          <div><span>MY ORDERS</span><h3>รายการพรีออเดอร์ของฉัน</h3></div>
-          <strong id="studentOrdersCount">0 รายการ</strong>
-        </div>
-        <div id="studentOrdersList" class="multi-orders-list"></div>
-      </section>
-    </div>
+</div>
   </section>
 
   <!-- STUDENT PREORDER -->
@@ -219,7 +212,7 @@
 
   <!-- PICKUP -->
   <section id="pickupScreen" class="screen hidden">
-    <header class="topbar"><button id="backToHubFromPickup" class="ghost">← เมนูหลัก</button><div class="mini-brand"><strong>การรับกระเป๋า</strong><span>Pickup Status</span></div></header>
+    <header class="topbar"><button id="backToHubFromPickup" class="ghost">← เมนูหลัก</button><div class="mini-brand"><strong>รับกระเป๋า</strong><span>แสดง QR ที่จุดรับสินค้า</span></div></header>
     <div class="pickup-shell pickup-detailed">
       <section id="studentPickupOrderSelector" class="pickup-order-selector hidden">
         <div class="selector-head"><span>เลือกคำสั่งซื้อ</span><strong id="studentPickupOrderCount">0 รายการ</strong></div>
@@ -231,10 +224,12 @@
         <div><span>สถานะการรับกระเป๋า</span><h2 id="pickupHeroTitle">กำลังตรวจสอบ</h2><p id="pickupHeroText">-</p></div>
       </section>
 
+      <details class="pickup-details"><summary><strong>รายละเอียดคำสั่งซื้อและการชำระเงิน</strong><span>ดูข้อมูลเพิ่มเติม</span></summary>
       <section class="pickup-profile-card">
         <div class="pickup-profile-head"><div><span>STUDENT INFORMATION</span><h3 id="pickupStudentName">-</h3></div><strong id="pickupStudentId">-</strong></div>
         <div class="pickup-data-grid"><div><span>ชั้น / ห้อง</span><strong id="pickupStudentClass">-</strong></div><div><span>เบอร์โทร</span><strong id="pickupStudentPhone">-</strong></div><div><span>เลขคำสั่งซื้อ</span><strong id="pickupOrderRef">-</strong></div><div><span>จำนวน</span><strong id="pickupQty">-</strong></div><div><span>ยอดชำระ</span><strong id="pickupAmount">-</strong></div><div><span>สถานะฝ่ายการเงิน</span><strong id="pickupFinanceStatus">-</strong></div></div>
       </section>
+      </details>
 
       <section id="pickupReadyPanel" class="pickup-ready-panel hidden">
         <span>READY FOR PICKUP</span><h2>พร้อมรับกระเป๋าแล้ว</h2><p>แสดงรหัสด้านล่างแก่เจ้าหน้าที่ในวันรับสินค้า</p><div class="pickup-code"><small>รหัสรับสินค้า</small><strong id="pickupCode">-</strong></div><div class="status-chip ready">ยืนยันการชำระเงินแล้ว</div>
@@ -260,34 +255,19 @@
         <p id="teacherHubIdentity">เลือกพรีออเดอร์ใหม่ หรือดูรายการพรีออเดอร์ของคุณ</p>
       </div>
 
+
+
+      <div class="function-grid user-action-stack">
+        <button id="teacherPickupCard" class="function-card pickup pickup-launch-card" type="button">
+          <span class="pickup-launch-copy"><span class="pickup-launch-kicker">รับกระเป๋าของคุณที่นี่</span><strong class="pickup-launch-title">รับกระเป๋า <span>/ เปิด QR</span></strong><span id="teacherPickupCardText" class="pickup-launch-description">เปิด QR ของคุณ แล้วแสดงให้เจ้าหน้าที่สแกน</span><span class="pickup-launch-bottom"><span id="teacherPickupStatusBadge" class="status-pill neutral">กำลังตรวจสอบรายการ</span><span class="pickup-launch-link">กดที่นี่เพื่อเปิด QR <b aria-hidden="true">↗</b></span></span></span>
+          <span class="pickup-launch-art" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M18 5H7a2 2 0 0 0-2 2v11m41-13h11a2 2 0 0 1 2 2v11M5 46v11a2 2 0 0 0 2 2h11m41-13v11a2 2 0 0 1-2 2H46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><path d="M16 16h11v11H16zm21 0h11v11H37zM16 37h11v11H16zm21 0h5v5h-5zm11 0v11H37m0-5h5" stroke="currentColor" stroke-width="3.5"/></svg><span>SCAN &amp; PICK UP</span></span>
+        </button>
+        <button id="teacherPreorderCard" class="function-card preorder preorder-secondary" type="button"><span class="preorder-secondary-copy"><strong>พรีออเดอร์กระเป๋า</strong><span>ดูขั้นตอนสั่งซื้อกระเป๋า</span></span><span id="teacherPreorderStatusBadge" class="status-pill neutral">ตรวจสอบช่วงเปิดรับ</span><b aria-hidden="true">→</b></button>
+      </div>
       <div class="portal-stats teacher-stats">
         <div><span>คำสั่งซื้อ</span><strong id="teacherStatTotal">0</strong></div>
         <div><span>รอตรวจสอบ</span><strong id="teacherStatPending">0</strong></div>
         <div><span>พร้อมรับ</span><strong id="teacherStatReady">0</strong></div>
-      </div>
-
-      <div class="function-grid teacher-function-grid">
-        <button id="teacherPreorderCard" class="function-card preorder" type="button">
-          <div class="function-icon">👜</div>
-          <div class="function-content">
-            <span>FUNCTION 01</span>
-            <h3>พรีออเดอร์กระเป๋า</h3>
-            <p>กรอกข้อมูล เลือกจำนวน ชำระเงิน และตรวจสอบข้อมูลก่อนยืนยัน</p>
-            <div id="teacherPreorderStatusBadge" class="status-pill neutral">เริ่มพรีออเดอร์</div>
-          </div>
-          <b>→</b>
-        </button>
-
-        <button id="teacherPickupCard" class="function-card pickup" type="button">
-          <div class="function-icon">✓</div>
-          <div class="function-content">
-            <span>FUNCTION 02</span>
-            <h3>รายการพรีออเดอร์ของฉัน</h3>
-            <p id="teacherPickupCardText">ดูรายการ สถานะการเงิน และสถานะการรับสินค้า</p>
-            <div id="teacherPickupStatusBadge" class="status-pill neutral">ดูรายการของฉัน</div>
-          </div>
-          <b>→</b>
-        </button>
       </div>
     </div>
   </section>
@@ -296,20 +276,12 @@
   <section id="teacherPickupScreen" class="screen hidden">
     <header class="topbar">
       <button id="backToTeacherHubFromPickup" class="ghost">← เมนูครู</button>
-      <div class="mini-brand"><strong>รายการพรีออเดอร์ของฉัน</strong><span>Teacher Orders</span></div>
+      <div class="mini-brand"><strong>รับกระเป๋า</strong><span>แสดง QR ที่จุดรับสินค้า</span></div>
     </header>
 
     <div class="pickup-shell pickup-detailed">
 
-      <section id="teacherOrdersSection" class="multi-orders-section hidden">
-        <div class="multi-orders-head">
-          <div><span>TEACHER ORDERS</span><h3>รายการพรีออเดอร์ของฉัน</h3></div>
-          <strong id="teacherOrdersCount">0 รายการ</strong>
-        </div>
-        <div id="teacherOrdersList" class="multi-orders-list"></div>
-      </section>
-
-      <section id="teacherPickupOrderSelector" class="pickup-order-selector hidden">
+<section id="teacherPickupOrderSelector" class="pickup-order-selector hidden">
         <div class="selector-head"><span>เลือกคำสั่งซื้อ</span><strong id="teacherPickupOrderCount">0 รายการ</strong></div>
         <div id="teacherPickupOrderList" class="pickup-order-list"></div>
       </section>
@@ -323,6 +295,7 @@
         </div>
       </section>
 
+      <details class="pickup-details"><summary><strong>รายละเอียดคำสั่งซื้อและการชำระเงิน</strong><span>ดูข้อมูลเพิ่มเติม</span></summary>
       <section class="pickup-profile-card">
         <div class="pickup-profile-head">
           <div><span>TEACHER INFORMATION</span><h3 id="teacherPickupName">-</h3></div>
@@ -335,6 +308,7 @@
           <div><span>สถานะฝ่ายการเงิน</span><strong id="teacherPickupFinanceStatus">-</strong></div>
         </div>
       </section>
+      </details>
 
       <section id="teacherPickupReadyPanel" class="pickup-ready-panel hidden">
         <span>READY FOR PICKUP</span>
@@ -582,6 +556,6 @@
 
   <div id="successModal" class="modal hidden"><div class="modal-bg"></div><div class="success-card"><div class="success-check">✓</div><span>COMPLETE</span><h2>บันทึกสำเร็จ</h2><p id="successText">ระบบได้รับคำสั่งซื้อแล้ว</p><div class="ref-box"><small>หมายเลขอ้างอิง</small><strong id="successRef">-</strong></div><button id="successClose" class="primary wide">กลับหน้าหลัก</button></div></div>
   <div id="toastContainer"></div>
-  <script type="module" src="./app.js?v=20261105-qr1"></script>
+  <script type="module" src="./app.js?v=20261105-user-ui2"></script>
 </body>
 </html>

@@ -11,27 +11,44 @@ export function paintPickupQr(canvas,payload,scale=8){
   for(let row=0;row<n;row++)for(let col=0;col<n;col++)if(qr.isDark(row,col))context.fillRect((col+quiet)*scale,(row+quiet)*scale,scale,scale);
   return canvas;
 }
+export function pickupPresentation(order,pickupOpen,configStatus="ready"){
+  const check=pickupEligibility(order,pickupOpen);
+  if(check.code==="ALREADY_PICKED_UP")return {state:"done",badge:"รับกระเป๋าแล้ว",title:"รับกระเป๋าเรียบร้อยแล้ว",help:"รายการนี้ได้รับการยืนยันรับจากเจ้าหน้าที่แล้ว",qrLabel:"QR ของรายการที่รับแล้ว",qrHint:"รายการนี้ไม่สามารถยืนยันรับซ้ำได้"};
+  if(order.payment?.status==="rejected")return {state:"issue",badge:"ตรวจสอบการชำระเงิน",title:"การชำระเงินมีปัญหา",help:order.payment.financeNote||"กรุณาติดต่อฝ่ายการเงินเพื่อตรวจสอบรายการนี้",qrLabel:"QR สำหรับตรวจสอบคำสั่งซื้อ",qrHint:"ใช้เปิดข้อมูลกับเจ้าหน้าที่ได้"};
+  if(!["pending","verified"].includes(order.payment?.status))return {state:"checking",badge:"ยังยืนยันสถานะเงินไม่ได้",title:"รอตรวจสอบข้อมูลคำสั่งซื้อ",help:"กรุณาติดต่อฝ่ายการเงินเพื่อตรวจสอบรายการนี้",qrLabel:"QR สำหรับตรวจสอบคำสั่งซื้อ",qrHint:"ใช้เปิดข้อมูลกับเจ้าหน้าที่ได้"};
+  if(order.payment?.status!=="verified")return {state:"pending",badge:"รอตรวจสอบการชำระเงิน",title:"รอฝ่ายการเงินตรวจสอบ",help:"มีคำสั่งซื้อแล้ว รอผลตรวจการชำระเงิน คุณเปิด QR นี้ให้เจ้าหน้าที่ตรวจสอบได้",qrLabel:"QR สำหรับตรวจสอบคำสั่งซื้อ",qrHint:"ยังไม่ใช่รายการพร้อมรับกระเป๋า"};
+  if(pickupOpen===null||configStatus!=="ready")return {state:"checking",badge:configStatus==="error"?"ยังตรวจสอบสถานะรับไม่ได้":"กำลังตรวจสอบสถานะ",title:"กำลังตรวจสอบการรับกระเป๋า",help:configStatus==="error"?"กรุณากดลองโหลดใหม่จากข้อความด้านบน":"กรุณารอสักครู่ ระบบกำลังตรวจสอบการเปิดรับสินค้า",qrLabel:"QR ของคำสั่งซื้อคุณ",qrHint:"รอยืนยันความพร้อมรับสินค้า"};
+  if(check.allowed)return {state:"ready",badge:"พร้อมรับกระเป๋า",title:"แสดง QR นี้ที่จุดรับกระเป๋า",help:"ให้เจ้าหน้าที่สแกน QR แล้วรอผลยืนยันก่อนรับกระเป๋า",qrLabel:"แสดงให้เจ้าหน้าที่สแกน",qrHint:"กดขยาย QR เพื่อให้สแกนง่ายขึ้น"};
+  return {state:"waiting",badge:pickupOpen?"รอเจ้าหน้าที่เตรียมรับ":"ชำระเงินผ่านแล้ว",title:pickupOpen?"รอเจ้าหน้าที่เตรียมรายการ":"ชำระเงินผ่านแล้ว รอเปิดรับ",help:pickupOpen?"ชำระเงินเรียบร้อยแล้ว รอเจ้าหน้าที่ปรับรายการให้พร้อมรับ":"กรุณารอแอดมินประกาศเปิดรับกระเป๋า ติดตามสถานะได้จากหน้านี้",qrLabel:"QR สำหรับตรวจสอบคำสั่งซื้อ",qrHint:"เก็บ QR นี้ไว้ใช้ในวันรับกระเป๋า"};
+}
 export function createPickupQrCard(host){
-  const card=document.createElement("section");card.className="pickup-qr-card hidden";
-  card.innerHTML='<div class="pickup-qr-copy"><span class="pickup-qr-kicker">ORDER QR</span><h2>QR สำหรับตรวจสอบและรับกระเป๋า</h2><p>แสดง QR นี้ให้แอดมินสแกน แล้วตรวจสอบชื่อและจำนวนก่อนรับกระเป๋า</p><strong class="pickup-qr-state"></strong><p class="pickup-qr-reference"></p><div class="pickup-qr-actions"><button type="button" data-qr-save>บันทึก QR</button><button type="button" data-qr-zoom>ขยาย QR</button></div></div><div class="pickup-qr-image"><canvas role="img" aria-label="QR คำสั่งซื้อกระเป๋า"></canvas></div>';
-  host.insertBefore(card,host.querySelector('.pickup-status-hero')||host.querySelector('.pickup-ready-panel'));
+  const oldHero=host.querySelector('.pickup-status-hero'),oldReady=host.querySelector('.pickup-ready-panel');
+  const card=document.createElement("section");card.className="pickup-qr-card pickup-focus-card hidden";
+  card.innerHTML=`<div class="qr-focus-top"><span class="qr-focus-kicker">บัตรรับกระเป๋าของคุณ</span><strong class="pickup-qr-state" aria-live="polite"></strong></div>
+    <div class="qr-focus-layout"><div class="qr-focus-content"><h2 class="qr-focus-title"></h2><p class="qr-focus-help"></p>
+    <div class="qr-recipient"><div class="qr-recipient-copy"><span class="qr-field-label">ผู้รับกระเป๋า</span><h3 class="qr-owner-name"></h3><p class="qr-owner-meta"></p></div><div class="qr-quantity"><span class="qr-field-label">จำนวนกระเป๋า</span><strong><b class="qr-quantity-number"></b><span>ใบ</span></strong></div></div>
+    <div class="qr-receipt-info" hidden><span aria-hidden="true">✓</span><div><strong class="qr-received-time"></strong><small class="qr-received-staff"></small></div></div>
+    <div class="pickup-qr-actions"><button type="button" data-qr-zoom>ขยาย QR ให้เจ้าหน้าที่สแกน ↗</button><button type="button" data-qr-save>บันทึก QR</button></div>
+    <div class="qr-secondary-reference"><span>เลขคำสั่งซื้อ</span><p class="pickup-qr-reference"></p><small class="qr-order-amount"></small></div></div>
+    <div class="qr-focus-code"><strong class="qr-code-label"></strong><div class="pickup-qr-image"><canvas role="img" aria-label="QR คำสั่งซื้อกระเป๋า"></canvas><p class="qr-canvas-error" hidden></p></div><p class="qr-code-hint"></p><div class="qr-backup" hidden><span>รหัสสำรอง หากสแกนไม่ได้</span><strong class="qr-backup-code"></strong></div></div></div>`;
+  host.insertBefore(card,oldHero||oldReady);
   const canvas=card.querySelector("canvas"),state=card.querySelector(".pickup-qr-state"),reference=card.querySelector(".pickup-qr-reference");
-  let lastPayload="",filename="order-qr";
-  const download=()=>{
+  let lastPayload="",filename="order-qr",zoomTitle="";
+  const text=(selector,value)=>{card.querySelector(selector).textContent=value;};
+  card.querySelector("[data-qr-save]").addEventListener("click",()=>{
     if(!lastPayload)return;
     canvas.toBlob(blob=>{
       if(!blob)return;
       const url=URL.createObjectURL(blob),link=document.createElement("a");
       link.href=url;link.download=filename+".png";link.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
     },"image/png");
-  };
-  card.querySelector("[data-qr-save]").addEventListener("click",download);
+  });
   card.querySelector("[data-qr-zoom]").addEventListener("click",()=>{
     if(!lastPayload)return;
     const overlay=document.createElement("div");overlay.className="pickup-qr-zoom";
     overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");overlay.setAttribute("aria-label","QR คำสั่งซื้อแบบขยาย");
     const panel=document.createElement("div"),title=document.createElement("strong"),image=document.createElement("img"),close=document.createElement("button");
-    title.textContent=reference.textContent;image.src=canvas.toDataURL("image/png");image.alt="QR คำสั่งซื้อ";close.type="button";close.textContent="ปิด QR แบบขยาย";
+    title.textContent=zoomTitle;image.src=canvas.toDataURL("image/png");image.alt="QR คำสั่งซื้อ";close.type="button";close.textContent="ปิด QR แบบขยาย";
     const previousFocus=document.activeElement;
     const hide=()=>{overlay.remove();document.removeEventListener("keydown",escape);previousFocus?.focus();};
     const escape=event=>{if(event.key==="Escape")hide();};
@@ -39,23 +56,36 @@ export function createPickupQrCard(host){
     panel.append(title,image,close);overlay.append(panel);document.body.append(overlay);close.focus();
   });
   return {
-    hide(){card.classList.add("hidden");lastPayload="";canvas.width=canvas.height=1;reference.textContent="";state.textContent="";},
-    render(order,pickupOpen,loaded=true){
+    hide(){card.classList.add("hidden");lastPayload="";canvas.width=canvas.height=1;reference.textContent="";state.textContent="";if(oldHero)oldHero.hidden=false;if(oldReady)oldReady.hidden=false;},
+    render(order,pickupOpen,loaded=true,configStatus="ready"){
       if(!loaded||!order){this.hide();return;}
-      card.classList.remove("hidden");
+      card.classList.remove("hidden");if(oldHero)oldHero.hidden=true;if(oldReady)oldReady.hidden=true;
+      const view=pickupPresentation(order,pickupOpen,configStatus),customer=order.customer||{};
+      const name=customer.displayName||`${customer.prefix||""}${customer.firstName||""} ${customer.lastName||""}`.trim()||"ผู้สั่งซื้อ";
+      const quantity=Number(order.order?.quantity||0);
+      card.dataset.state=view.state;state.dataset.state=view.state;state.textContent=view.badge;
+      text(".qr-focus-title",view.title);text(".qr-focus-help",view.help);text(".qr-owner-name",name);text(".qr-quantity-number",String(quantity));
+      text(".qr-owner-meta",customer.studentId?`รหัส ${customer.studentId}${customer.level?` · ${customer.level}${customer.room?` / ห้อง ${customer.room}`:""}`:""}`:order.buyerType==="director"?"รายการสนับสนุนของผู้อำนวยการโรงเรียน":order.buyerType==="teacher"?"บัญชีผู้สั่งซื้อสำหรับครู":"ผู้สั่งซื้อ");
+      reference.textContent=order.referenceCode||"-";
+      text(".qr-order-amount",`ยอดชำระ ฿${Number(order.order?.totalAmount||0).toLocaleString("th-TH")}`);
+      text(".qr-code-label",view.qrLabel);text(".qr-code-hint",view.qrHint);
+      const receipt=card.querySelector(".qr-receipt-info");receipt.hidden=view.state!=="done"||typeof order.pickup?.pickedUpAt!=="number";
+      if(!receipt.hidden){
+        text(".qr-received-time",`รับเมื่อ ${new Intl.DateTimeFormat("th-TH",{dateStyle:"medium",timeStyle:"short"}).format(new Date(order.pickup.pickedUpAt))}`);
+        text(".qr-received-staff",order.pickup.pickedUpBy?`ยืนยันโดย ${order.pickup.pickedUpBy}`:"เจ้าหน้าที่ยืนยันรับสินค้าแล้ว");
+      }
+      const backup=card.querySelector(".qr-backup");backup.hidden=view.state!=="ready"||!order.pickup?.code;
+      text(".qr-backup-code",order.pickup?.code||"");
+      card.querySelector("[data-qr-zoom]").textContent=view.state==="done"?"ดู QR ของรายการนี้ ↗":"ขยาย QR ให้เจ้าหน้าที่สแกน ↗";
       filename="SCKC-QR-"+String(order.referenceCode||"order").replace(/[^A-Za-z0-9_-]/g,"");
-      reference.textContent=`${order.referenceCode||"-"} · ${Number(order.order?.quantity||0)} ใบ`;
+      zoomTitle=`${name} · ${quantity} ใบ${view.state==="done"?" · รับแล้ว":""}`;
       try{
         const payload=makePickupPayload(order);
         if(payload!==lastPayload){paintPickupQr(canvas,payload);lastPayload=payload;}
-        canvas.hidden=false;card.querySelector(".pickup-qr-actions").hidden=false;
+        canvas.hidden=false;card.querySelector(".qr-canvas-error").hidden=true;card.querySelector(".pickup-qr-actions").hidden=false;
       }catch{
-        canvas.hidden=true;lastPayload="";state.textContent="ยังสร้าง QR ไม่ได้ กรุณาติดต่อเจ้าหน้าที่พร้อมเลขคำสั่งซื้อ";card.querySelector(".pickup-qr-actions").hidden=true;return;
+        canvas.hidden=true;lastPayload="";const error=card.querySelector(".qr-canvas-error");error.hidden=false;error.textContent="ยังสร้าง QR ไม่ได้ กรุณาติดต่อเจ้าหน้าที่พร้อมเลขคำสั่งซื้อ";card.querySelector(".pickup-qr-actions").hidden=true;
       }
-      const check=pickupEligibility(order,pickupOpen);
-      const labels={READY:"พร้อมรับกระเป๋า",ALREADY_PICKED_UP:"รับกระเป๋าเรียบร้อยแล้ว",PAYMENT_NOT_VERIFIED:order.payment?.status==="rejected"?"รอตรวจสอบปัญหาการชำระเงิน":"รอฝ่ายการเงินยืนยัน",PICKUP_CLOSED:"ใช้ตรวจสอบคำสั่งซื้อได้ · รอเปิดรับกระเป๋า",ORDER_NOT_READY:"ใช้ตรวจสอบคำสั่งซื้อได้ · ยังไม่พร้อมรับ"};
-      state.textContent=pickupOpen===null&&order.payment?.status==="verified"&&check.code!=="ALREADY_PICKED_UP"?"กำลังตรวจสอบสถานะรับสินค้า":labels[check.code]||"ใช้ตรวจสอบคำสั่งซื้อกับแอดมิน";
-      state.dataset.state=check.allowed?"ready":check.code==="ALREADY_PICKED_UP"?"done":"waiting";
     }
   };
 }
